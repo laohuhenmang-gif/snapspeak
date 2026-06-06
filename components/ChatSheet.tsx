@@ -158,9 +158,7 @@ export default function ChatSheet({ visible, onClose, task }: ChatSheetProps) {
 
         <View style={[styles.header, { borderBottomColor: theme.border }]}>
           <View style={styles.avatarWrap}>
-            <View style={[styles.avatar, { backgroundColor: theme.primaryLight, justifyContent: 'center', alignItems: 'center' }]}>
-              <Text style={{ fontSize: 18 }}>🤖</Text>
-            </View>
+            <Image source={require('../assets/mona-avatar.png')} style={styles.avatar} />
           </View>
           <View style={styles.headerText}>
             <Text style={[styles.headerTitle, { color: theme.text }]}>
@@ -179,9 +177,7 @@ export default function ChatSheet({ visible, onClose, task }: ChatSheetProps) {
           renderItem={({ item }) => (
             <View style={[styles.bubbleRow, item.role === 'user' ? styles.userRow : styles.aiRow]}>
               {item.role === 'assistant' && (
-                <View style={[styles.avatarSmall, { backgroundColor: theme.primaryLight, justifyContent: 'center', alignItems: 'center' }]}>
-                  <Text style={{ fontSize: 12 }}>🤖</Text>
-                </View>
+                <Image source={require('../assets/mona-avatar.png')} style={styles.avatarSmall} />
               )}
               <View style={[
                 styles.bubble,
