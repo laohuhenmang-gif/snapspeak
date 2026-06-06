@@ -159,7 +159,7 @@ export default function TodayScreen() {
       }
       await executeActions(actions, text);
     } catch (e: any) {
-      toast(e.message || '处理失败，请检查网络和 API Key', 'warn');
+      Alert.alert('处理失败', e.message || '请检查网络和 API Key');
     } finally {
       setSending(false);
     }
@@ -252,36 +252,33 @@ export default function TodayScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   headerWrap: { paddingHorizontal: 16, paddingTop: 60, paddingBottom: 4 },
-  pageTitle: { fontSize: 26, fontWeight: '800', marginBottom: 8 },
+  pageTitle: { fontSize: 24, fontWeight: '900', marginBottom: 8, fontFamily: 'monospace' },
   setupBanner: {
-    backgroundColor: '#FFF3E0', borderRadius: 14,
-    paddingVertical: 10, paddingHorizontal: 16,
-    marginHorizontal: 16, marginBottom: 8,
+    backgroundColor: '#FFF', borderWidth: 2, borderColor: '#000',
+    paddingVertical: 8, paddingHorizontal: 14,
+    marginHorizontal: 12, marginBottom: 8,
   },
-  setupBannerText: { fontSize: 13, fontWeight: '600', color: '#E67E22' },
+  setupBannerText: { fontSize: 12, fontWeight: '700', color: '#000', fontFamily: 'monospace' },
   briefingCard: {
-    borderRadius: 20, padding: 20,
-    marginHorizontal: 16, marginBottom: 8,
-    elevation: 3,
-    shadowColor: '#7C5CFC', shadowOpacity: 0.08, shadowRadius: 16, shadowOffset: { width: 0, height: 4 },
+    borderWidth: 2, borderColor: '#000', padding: 16,
+    marginHorizontal: 12, marginBottom: 8, backgroundColor: '#FFF',
   },
-  briefingText: { fontSize: 15, lineHeight: 22 },
-  briefingToggle: { fontSize: 12, fontWeight: '600', marginTop: 6 },
+  briefingText: { fontSize: 14, lineHeight: 22, fontFamily: 'monospace' },
+  briefingToggle: { fontSize: 11, fontWeight: '700', marginTop: 4 },
   suggestionCard: {
-    borderRadius: 14, paddingVertical: 10, paddingHorizontal: 16,
-    marginHorizontal: 16, marginBottom: 8,
+    borderWidth: 2, borderColor: '#000', paddingVertical: 8, paddingHorizontal: 14,
+    marginHorizontal: 12, marginBottom: 8, backgroundColor: '#FFF',
   },
-  suggestionText: { fontSize: 13, lineHeight: 18, fontWeight: '500' },
+  suggestionText: { fontSize: 12, lineHeight: 16, fontWeight: '700', fontFamily: 'monospace' },
   list: { flexGrow: 1, paddingBottom: 8 },
   emptyState: { alignItems: 'center', paddingTop: 60 },
-  emptyTitle: { fontSize: 16, fontWeight: '600' },
-  emptyHint: { fontSize: 13, marginTop: 6 },
+  emptyTitle: { fontSize: 15, fontWeight: '700', fontFamily: 'monospace' },
+  emptyHint: { fontSize: 12, marginTop: 4, fontFamily: 'monospace' },
   chatFab: {
-    position: 'absolute', bottom: 72, right: 16,
-    width: 48, height: 48, borderRadius: 24,
+    position: 'absolute', bottom: 72, right: 12,
+    width: 44, height: 44,
     justifyContent: 'center', alignItems: 'center',
-    elevation: 6,
-    shadowColor: '#7C5CFC', shadowOpacity: 0.25, shadowRadius: 10, shadowOffset: { width: 0, height: 4 },
+    borderWidth: 2, borderColor: '#FFF',
   },
-  chatFabText: { fontSize: 22 },
+  chatFabText: { fontSize: 20, fontFamily: 'monospace', color: '#FFF' },
 });

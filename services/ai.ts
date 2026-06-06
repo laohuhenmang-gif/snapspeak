@@ -18,7 +18,6 @@ async function callDeepSeek(
     temperature: 0.1,
     max_tokens: 2048,
   };
-  if (jsonMode) body.response_format = { type: 'json_object' };
 
   const res = await fetch(`${DEEPSEEK_BASE}/chat/completions`, {
     method: 'POST',
@@ -57,9 +56,7 @@ export async function chat(
     .map(t => `  [${t.priority}] ${t.datetime?.slice(11,16) || ''} ${t.title}`)
     .join('\n');
 
-  const systemMsg = `${AGENT_SYSTEM_PROMPT}
-
-## 当前上下文
+  const systemMsg = `${AGENT_SYSTEM_PROMPT}\n\n## 回复格式\n必须以纯 JSON 返回，不要用 \`\`\`json 包裹，字段：{"reply": "对用户说的话", "actions": [...]}。reply 字段必填。\n\n## 当前上下文
 ${context}
 今日待办任务：
 ${todayStr || '  今天没有待办任务'}
@@ -91,7 +88,7 @@ ${todayStr || '  今天没有待办任务'}
 export async function parseTask(userText: string): Promise<{ parsed: AIParseResult; rawTitle: string }> {
   const context = buildContext();
   const result = await callDeepSeek([
-    { role: 'system', content: AGENT_SYSTEM_PROMPT + `\n\n用户想要创建一个任务。请以 JSON 格式返回以下字段（action="create"）：title, datetime, priority, recurring, category, notes。只返回 JSON 对象。\n\n${context}` },
+    { role: 'system', content: AGENT_SYSTEM_PROMPT + `\n\n用户想要创建一个任务。请以 JSON 格式返回以下字段（action="create"）：title, datetime, priority, recurring, category, notes。只返回纯 JSON 对象，不要用 \`\`\`json 包裹，不要输出任何解释文字。\n\n${context}` },
     { role: 'user', content: userText },
   ], true);
 
@@ -115,7 +112,7 @@ export async function parseTask(userText: string): Promise<{ parsed: AIParseResu
 export async function editTask(task: Task, editCommand: string): Promise<{ changes: Partial<Task>; summary: string }> {
   const context = buildContext(`当前任务：${JSON.stringify(task)}`);
   const result = await callDeepSeek([
-    { role: 'system', content: AGENT_SYSTEM_PROMPT + `\n\n用户想修改一个已有任务。返回 JSON：{"action":"edit","changes":{...},"summary":"确认语"}\n只能返回 changes 中实际需要修改的字段。\n\n${context}` },
+    { role: 'system', content: AGENT_SYSTEM_PROMPT + `\n\n用户想修改一个已有任务。返回纯 JSON：{"action":"edit","changes":{...},"summary":"确认语"}\n只能返回 changes 中实际需要修改的字段。不要用 \`\`\`json 包裹。\n\n${context}` },
     { role: 'user', content: editCommand },
   ], true);
 
@@ -137,7 +134,7 @@ export async function editTask(task: Task, editCommand: string): Promise<{ chang
 export async function handleReminderResponse(taskTitle: string, userResponse: string): Promise<ReminderAction> {
   const now = new Date().toISOString();
   const result = await callDeepSeek([
-    { role: 'system', content: AGENT_SYSTEM_PROMPT + `\n\n用户收到任务提醒后做出回应。当前时间：${now}\n返回 JSON：{"action":"snooze|complete|reschedule|dismiss","snoozeMinutes":number|null,"newDatetime":"ISO|null","message":"确认语"}` },
+    { role: 'system', content: AGENT_SYSTEM_PROMPT + `\n\n用户收到任务提醒后做出回应。当前时间：${now}\n返回纯 JSON：{"action":"snooze|complete|reschedule|dismiss","snoozeMinutes":number|null,"newDatetime":"ISO|null","message":"确认语"}。不要用 \`\`\`json 包裹。` },
     { role: 'user', content: `任务：${taskTitle}\n用户回应：${userResponse}` },
   ], true);
 
@@ -174,7 +171,7 @@ export async function ocrEnhance(rawText: string): Promise<{ cleaned: string; ta
   const result = await callDeepSeek([
     { role: 'system', content: `你是 OCR 文本清洗和任务提取助手。
 清洗OCR文本，修正错别字，提取所有待办事项。
-返回 JSON：{"cleaned":"清洗后文本","tasks":[{"title":"...","datetime":"...或null","priority":"高/中/低","category":"..."}]}` },
+返回纯 JSON：{"cleaned":"清洗后文本","tasks":[{"title":"...","datetime":"...或null","priority":"高/中/低","category":"..."}]}。不要用 \`\`\`json 包裹。` },
     { role: 'user', content: rawText },
   ], true);
 
@@ -209,7 +206,7 @@ export async function suggestTasks(taskHistory: Task[]): Promise<string> {
 export async function multiIntent(text: string): Promise<AIAction[]> {
   const context = buildContext();
   const result = await callDeepSeek([
-    { role: 'system', content: AGENT_SYSTEM_PROMPT + `\n\n用户的一句话可能包含多个操作。解析为 actions 数组。返回 JSON：{"actions":[...]}\n\n${context}` },
+    { role: 'system', content: AGENT_SYSTEM_PROMPT + `\n\n用户的一句话可能包含多个操作。解析为 actions 数组。返回纯 JSON：{"actions":[...]}。不要用 \`\`\`json 包裹，不要输出任何解释文字。\n\n${context}` },
     { role: 'user', content: text },
   ], true);
 

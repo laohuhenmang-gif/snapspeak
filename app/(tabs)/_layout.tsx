@@ -14,20 +14,14 @@ export default function TabLayout() {
         tabBarInactiveTintColor: theme.textMuted,
         tabBarStyle: {
           backgroundColor: theme.card,
-          borderTopColor: theme.border,
-          borderRadius: 20,
-          marginHorizontal: 12,
-          marginBottom: 12,
-          paddingTop: 6,
-          paddingBottom: 6,
-          height: 60,
-          elevation: 4,
-          shadowColor: '#7C5CFC',
-          shadowOpacity: 0.08,
-          shadowRadius: 12,
-          shadowOffset: { width: 0, height: -2 },
+          borderTopWidth: 2, borderTopColor: theme.border,
+          borderLeftWidth: 2, borderLeftColor: theme.border,
+          borderRightWidth: 2, borderRightColor: theme.border,
+          borderBottomWidth: 2, borderBottomColor: theme.border,
+          marginHorizontal: 12, marginBottom: 8,
+          paddingTop: 4, paddingBottom: 4, height: 56,
         },
-        tabBarLabelStyle: { fontSize: 11, fontWeight: '600' },
+        tabBarLabelStyle: { fontSize: 10, fontWeight: '700', fontFamily: 'monospace' },
       }}
     >
       <Tabs.Screen

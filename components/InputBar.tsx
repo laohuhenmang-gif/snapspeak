@@ -17,9 +17,7 @@ export default function InputBar({ onSendText, onVoiceResult, showCamera = true 
   const [recording, setRecording] = useState(false);
   const [cancelling, setCancelling] = useState(false);
   const pulseAnim = useRef(new Animated.Value(1)).current;
-  const modeAnim = useRef(new Animated.Value(1)).current;
   const voiceBtnScale = useRef(new Animated.Value(1)).current;
-  const cancelZone = useRef(new Animated.Value(0)).current;
 
   const startPulse = useCallback(() => {
     Animated.loop(
@@ -66,26 +64,20 @@ export default function InputBar({ onSendText, onVoiceResult, showCamera = true 
         setCancelling(true);
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
       }
-      Animated.timing(cancelZone, { toValue: 1, duration: 100, useNativeDriver: true }).start();
     } else {
       if (cancelling) setCancelling(false);
-      Animated.timing(cancelZone, { toValue: 0, duration: 100, useNativeDriver: true }).start();
     }
-  }, [cancelling, cancelZone]);
+  }, [cancelling]);
 
-  const stopRecording = useCallback(() => {
-    const wasCancelling = cancelling;
+  const stopRecording = useRef(() => {
     setRecording(false);
     setCancelling(false);
     stopPulse();
-    cancelZone.setValue(0);
     Animated.spring(voiceBtnScale, { toValue: 1, useNativeDriver: true }).start();
-
-    if (!wasCancelling) {
-      const mockResult = '下周二下午三点开会讨论项目进度';
-      onVoiceResult(mockResult);
+    if (!cancelling) {
+      onVoiceResult('下周二下午三点开会讨论项目进度');
     }
-  }, [cancelling, stopPulse, voiceBtnScale, cancelZone, onVoiceResult]);
+  }).current;
 
   const panResponder = useRef(
     PanResponder.create({
@@ -103,17 +95,17 @@ export default function InputBar({ onSendText, onVoiceResult, showCamera = true 
         <View style={styles.container}>
           {showCamera && (
             <TouchableOpacity style={styles.cameraBtn} onPress={() => router.push('/new-task/camera')}>
-              <Text style={styles.cameraIcon}>📷</Text>
+              <Text style={styles.cameraIcon}>[ ]</Text>
             </TouchableOpacity>
           )}
           <TouchableOpacity style={styles.micBtn} onPress={switchToVoice}>
-            <Text style={styles.micIcon}>🎤</Text>
+            <Text style={styles.micIcon}>(o)</Text>
           </TouchableOpacity>
           <TextInput
             style={styles.input}
             value={text}
             onChangeText={setText}
-            placeholder="输入新任务…"
+            placeholder="> NEW TASK_"
             placeholderTextColor={COLORS.textMuted}
             returnKeyType="send"
             onSubmitEditing={handleSend}
@@ -123,13 +115,13 @@ export default function InputBar({ onSendText, onVoiceResult, showCamera = true 
             onPress={handleSend}
             disabled={!text.trim()}
           >
-            <Text style={[styles.sendText, !text.trim() && styles.sendTextDisabled]}>发送</Text>
+            <Text style={[styles.sendText, !text.trim() && styles.sendTextDisabled]}>SEND</Text>
           </TouchableOpacity>
         </View>
       ) : (
         <View style={styles.voiceContainer}>
           <TouchableOpacity style={styles.keyboardBtn} onPress={switchToText}>
-            <Text style={styles.keyboardIcon}>⌨️</Text>
+            <Text style={styles.keyboardIcon}>[K]</Text>
           </TouchableOpacity>
           <View style={styles.voiceBtnWrap}>
             {recording && (
@@ -139,11 +131,11 @@ export default function InputBar({ onSendText, onVoiceResult, showCamera = true 
               style={[styles.voiceBtn, recording && styles.voiceBtnActive, { transform: [{ scale: voiceBtnScale }] }]}
               {...panResponder.panHandlers}
             >
-              <Text style={styles.voiceBtnIcon}>{recording ? '🔴' : '🎤'}</Text>
+              <Text style={styles.voiceBtnIcon}>{recording ? 'REC' : 'HOLD'}</Text>
             </Animated.View>
           </View>
-          <Text style={[styles.voiceHint, recording && { color: cancelling ? COLORS.danger : COLORS.primary }]}>
-            {recording ? (cancelling ? '松手取消' : '上滑取消 · 松开发送') : '按住说话'}
+          <Text style={[styles.voiceHint, recording && { color: cancelling ? '#F00' : COLORS.text }]}>
+            {recording ? (cancelling ? 'CANCEL!' : '>>RELEASE<<') : 'SPEAK_'}
           </Text>
         </View>
       )}
@@ -152,86 +144,55 @@ export default function InputBar({ onSendText, onVoiceResult, showCamera = true 
 }
 
 const styles = StyleSheet.create({
-  wrapper: {
-    paddingHorizontal: 12, paddingBottom: 12,
-  },
+  wrapper: { paddingHorizontal: 8, paddingBottom: 8 },
   container: {
     flexDirection: 'row', alignItems: 'center',
-    paddingHorizontal: 10, paddingVertical: 8,
+    paddingHorizontal: 8, paddingVertical: 6,
     backgroundColor: COLORS.card,
-    borderRadius: 28,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: COLORS.border,
-    elevation: 4,
-    shadowColor: '#7C5CFC',
-    shadowOpacity: 0.08,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 2 },
+    borderWidth: 2, borderColor: COLORS.border,
   },
-  cameraBtn: { padding: 6 },
-  cameraIcon: { fontSize: 20 },
-  micBtn: { padding: 6, marginHorizontal: 2 },
-  micIcon: { fontSize: 20 },
+  cameraBtn: { padding: 4 },
+  cameraIcon: { fontSize: 16, fontFamily: 'monospace', color: COLORS.text },
+  micBtn: { padding: 4, marginHorizontal: 2 },
+  micIcon: { fontSize: 16, fontFamily: 'monospace', color: COLORS.text },
   input: {
     flex: 1,
-    backgroundColor: COLORS.bg,
-    borderRadius: 20,
-    paddingHorizontal: 16,
-    paddingVertical: 9,
-    fontSize: 15,
-    color: COLORS.text,
-    marginHorizontal: 4,
-    maxHeight: 80,
+    backgroundColor: COLORS.inputBg,
+    paddingHorizontal: 10, paddingVertical: 7,
+    fontSize: 14, fontFamily: 'monospace',
+    color: COLORS.text, borderWidth: 1, borderColor: COLORS.border,
+    marginHorizontal: 4, maxHeight: 80,
   },
   sendBtn: {
     backgroundColor: COLORS.primary,
-    borderRadius: 18,
-    paddingHorizontal: 16,
-    paddingVertical: 9,
-    marginLeft: 4,
+    borderWidth: 2, borderColor: COLORS.border,
+    paddingHorizontal: 10, paddingVertical: 7, marginLeft: 2,
   },
-  sendBtnDisabled: { backgroundColor: COLORS.border },
-  sendText: { color: '#fff', fontSize: 14, fontWeight: '600' },
-  sendTextDisabled: { color: COLORS.textLight },
+  sendBtnDisabled: { backgroundColor: COLORS.card, borderColor: COLORS.textMuted },
+  sendText: { color: '#FFF', fontSize: 12, fontWeight: '700', fontFamily: 'monospace' },
+  sendTextDisabled: { color: COLORS.textMuted },
   voiceContainer: {
     flexDirection: 'row', alignItems: 'center',
-    paddingHorizontal: 10, paddingVertical: 8,
+    paddingHorizontal: 8, paddingVertical: 6,
     backgroundColor: COLORS.card,
-    borderRadius: 28,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: COLORS.border,
-    elevation: 4,
-    shadowColor: '#7C5CFC',
-    shadowOpacity: 0.08,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 2 },
+    borderWidth: 2, borderColor: COLORS.border,
   },
-  keyboardBtn: { padding: 6 },
-  keyboardIcon: { fontSize: 20 },
-  voiceBtnWrap: {
-    flex: 1, alignItems: 'center', justifyContent: 'center',
-    position: 'relative',
-  },
+  keyboardBtn: { padding: 4 },
+  keyboardIcon: { fontSize: 16, fontFamily: 'monospace', color: COLORS.text },
+  voiceBtnWrap: { flex: 1, alignItems: 'center', justifyContent: 'center', position: 'relative' },
   voiceBtn: {
-    width: 52, height: 52, borderRadius: 26,
-    backgroundColor: COLORS.primary,
+    width: 48, height: 48,
+    backgroundColor: COLORS.card, borderWidth: 3, borderColor: COLORS.border,
     justifyContent: 'center', alignItems: 'center',
-    elevation: 4,
-    shadowColor: COLORS.primary,
-    shadowOpacity: 0.35,
-    shadowRadius: 8,
   },
-  voiceBtnActive: { backgroundColor: COLORS.danger },
-  voiceBtnIcon: { fontSize: 24 },
+  voiceBtnActive: { backgroundColor: '#000', borderColor: '#FFF' },
+  voiceBtnIcon: { fontSize: 10, fontWeight: '700', fontFamily: 'monospace', color: COLORS.text },
   recordRing: {
-    position: 'absolute',
-    width: 70, height: 70, borderRadius: 35,
-    borderWidth: 2,
-    borderColor: COLORS.danger,
-    opacity: 0.25,
+    position: 'absolute', width: 64, height: 64,
+    borderWidth: 2, borderColor: '#000',
   },
   voiceHint: {
-    fontSize: 12, color: COLORS.textMuted,
-    width: 70, textAlign: 'center', marginLeft: 8,
+    fontSize: 10, fontFamily: 'monospace', color: COLORS.textMuted,
+    width: 70, textAlign: 'center', marginLeft: 4,
   },
 });

@@ -1,4 +1,4 @@
-import { getApiKey, getModel } from './ai-config';
+import { getApiKey } from './ai-config';
 
 export interface OCRResult {
   text: string;
@@ -12,14 +12,13 @@ async function deepseekVisionOCR(imageBase64: string): Promise<OCRResult> {
   if (!apiKey) {
     return { text: '请先在设置中配置 DeepSeek API Key', confidence: 0 };
   }
-  const model = await getModel();
 
   try {
     const res = await fetch(DEEPSEEK_API, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
       body: JSON.stringify({
-        model,
+        model: 'deepseek-v4-flash',
         messages: [
           {
             role: 'system',
@@ -33,13 +32,11 @@ async function deepseekVisionOCR(imageBase64: string): Promise<OCRResult> {
             ],
           },
         ],
-        temperature: 0.1,
         max_tokens: 2048,
       }),
     });
 
     if (!res.ok) {
-      const err = await res.text();
       return { text: `OCR 识别失败 (${res.status})`, confidence: 0 };
     }
 

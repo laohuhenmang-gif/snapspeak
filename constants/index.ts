@@ -1,19 +1,19 @@
 export const COLORS = {
-  primary: '#7C5CFC',
-  primaryDark: '#5B3EE8',
-  danger: '#FF6B6B',
-  success: '#2ED573',
-  warning: '#FF9F43',
-  bg: '#F5F0FF',
+  primary: '#000000',
+  primaryDark: '#000000',
+  danger: '#000000',
+  success: '#000000',
+  warning: '#000000',
+  bg: '#FFFFFF',
   card: '#FFFFFF',
-  text: '#2D1B69',
-  textLight: '#7B6BAE',
-  textMuted: '#A89CC8',
-  border: '#E8E0F0',
-  priorityHigh: '#FF6B6B',
-  priorityMedium: '#FF9F43',
-  priorityLow: '#2ED573',
-  inputBg: '#F0ECFF',
+  text: '#000000',
+  textLight: '#666666',
+  textMuted: '#999999',
+  border: '#000000',
+  priorityHigh: '#000000',
+  priorityMedium: '#000000',
+  priorityLow: '#999999',
+  inputBg: '#F5F5F5',
 };
 
 export const PRIORITY_LABELS = ['高', '中', '低'] as const;
@@ -28,11 +28,11 @@ export const RECURRING_LABELS: Record<string, string> = {
 };
 
 export const CATEGORY_COLORS: Record<string, string> = {
-  '工作': '#7C5CFC',
-  '学习': '#A78BFA',
-  '健康': '#2ED573',
-  '生活': '#FF9F43',
-  '其他': '#A89CC8',
+  '工作': '#000000',
+  '学习': '#444444',
+  '健康': '#888888',
+  '生活': '#BBBBBB',
+  '其他': '#CCCCCC',
 };
 
 export const CATEGORY_LABELS = ['工作', '学习', '健康', '生活', '其他'] as const;

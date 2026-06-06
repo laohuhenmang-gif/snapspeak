@@ -14,7 +14,7 @@ interface TaskCardProps {
 
 export default function TaskCard({ task, onToggle, onLongPress, onTap }: TaskCardProps) {
   const router = useRouter();
-  const priorityIcon = task.priority === '高' ? '⚡' : task.priority === '低' ? '○' : '·';
+  const priorityIcon = task.priority === '高' ? '!!' : task.priority === '低' ? '--' : '··';
   const time = task.datetime ? task.datetime.slice(11, 16) : '';
 
   const handleLongPress = () => {
@@ -45,7 +45,7 @@ export default function TaskCard({ task, onToggle, onLongPress, onTap }: TaskCar
         else router.push({ pathname: `/task-edit/${task.id}` });
       }}
       onLongPress={handleLongPress}
-      activeOpacity={0.6}
+      activeOpacity={0.8}
     >
       <Text style={styles.priorityIcon}>{priorityIcon}</Text>
       {time ? <Text style={[styles.time, task.completed && styles.dim]}>{time}</Text> : null}
@@ -53,7 +53,7 @@ export default function TaskCard({ task, onToggle, onLongPress, onTap }: TaskCar
         {task.title}
       </Text>
       {task.recurring !== 'none' && (
-        <Text style={styles.recurring}>↻</Text>
+        <Text style={styles.recurring}>{'>'}{'>'}</Text>
       )}
     </TouchableOpacity>
   );
@@ -62,30 +62,16 @@ export default function TaskCard({ task, onToggle, onLongPress, onTap }: TaskCar
 const styles = StyleSheet.create({
   card: {
     flexDirection: 'row', alignItems: 'center',
-    paddingVertical: 14, paddingHorizontal: 16,
-    marginHorizontal: 16,
-    marginVertical: 3,
-    borderRadius: 16,
+    paddingVertical: 12, paddingHorizontal: 14,
+    marginHorizontal: 12, marginVertical: 2,
     backgroundColor: COLORS.card,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    elevation: 2,
-    shadowColor: '#7C5CFC',
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 2 },
+    borderWidth: 2, borderColor: COLORS.border,
   },
   completed: { opacity: 0.5 },
-  priorityIcon: { fontSize: 14, width: 22, textAlign: 'center', color: COLORS.text },
-  time: {
-    fontSize: 14, fontWeight: '500', color: COLORS.text,
-    width: 48, fontVariant: ['tabular-nums'],
-  },
+  priorityIcon: { fontSize: 12, width: 22, textAlign: 'center', color: COLORS.text, fontFamily: 'monospace' },
+  time: { fontSize: 13, fontWeight: '700', color: COLORS.text, width: 48, fontVariant: ['tabular-nums'] },
   dim: { color: COLORS.textLight },
-  title: {
-    flex: 1, fontSize: 15, color: COLORS.text,
-    marginLeft: 8,
-  },
+  title: { flex: 1, fontSize: 14, color: COLORS.text, marginLeft: 8 },
   lineThrough: { textDecorationLine: 'line-through', color: COLORS.textLight },
-  recurring: { fontSize: 14, color: COLORS.primary, marginLeft: 4 },
+  recurring: { fontSize: 12, color: COLORS.text, marginLeft: 4, fontFamily: 'monospace' },
 });
