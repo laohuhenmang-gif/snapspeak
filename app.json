@@ -34,7 +34,10 @@
         "POST_NOTIFICATIONS",
         "SCHEDULE_EXACT_ALARM",
         "READ_EXTERNAL_STORAGE",
-        "READ_MEDIA_IMAGES"
+        "READ_MEDIA_IMAGES",
+        "android.permission.CAMERA",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.MODIFY_AUDIO_SETTINGS"
       ]
     },
     "plugins": [
@@ -48,6 +51,13 @@
         }
       ],
       "expo-av"
-    ]
+    ],
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "c1da7284-e3e6-46e8-88bb-fcb26421fd40"
+      }
+    },
+    "owner": "laohu"
   }
 }
