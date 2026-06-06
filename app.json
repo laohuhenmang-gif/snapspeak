@@ -56,7 +56,9 @@
             "minSdkVersion": 23
           }
         }
-      ]
+      ],
+      "expo-font",
+      "expo-asset"
     ],
     "extra": {
       "router": {},
