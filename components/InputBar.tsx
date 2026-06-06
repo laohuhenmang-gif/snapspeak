@@ -1,6 +1,6 @@
 import { View, TextInput, TouchableOpacity, StyleSheet, Animated } from 'react-native';
 import { useRouter } from 'expo-router';
-import { useState, useRef, useCallback, useEffect } from 'react';
+import { useState, useRef, useCallback } from 'react';
 import { COLORS } from '../constants';
 
 interface InputBarProps {
@@ -90,7 +90,7 @@ export default function InputBar({ onSendText, onVoiceResult }: InputBarProps) {
         value={text}
         onChangeText={setText}
         placeholder="输入新任务…"
-        placeholderTextColor={COLORS.textLight}
+        placeholderTextColor={COLORS.textMuted}
         returnKeyType="send"
         onSubmitEditing={handleSend}
         onFocus={() => setInputFocused(true)}
@@ -113,12 +113,21 @@ export default function InputBar({ onSendText, onVoiceResult }: InputBarProps) {
 const styles = StyleSheet.create({
   container: {
     flexDirection: 'row', alignItems: 'center',
-    paddingHorizontal: 8, paddingVertical: 6,
+    marginHorizontal: 12, marginBottom: 8,
+    paddingHorizontal: 10, paddingVertical: 8,
     backgroundColor: COLORS.card,
-    borderTopWidth: 1, borderTopColor: COLORS.border,
+    borderRadius: 28,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    elevation: 4,
+    shadowColor: '#7C5CFC',
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 2 },
   },
   containerFocused: {
-    borderTopColor: COLORS.primary,
+    borderColor: COLORS.primary,
+    shadowOpacity: 0.12,
   },
   cameraBtn: { padding: 6 },
   cameraIcon: { fontSize: 20 },
@@ -138,10 +147,10 @@ const styles = StyleSheet.create({
   },
   input: {
     flex: 1,
-    backgroundColor: COLORS.bg,
-    borderRadius: 18,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
+    backgroundColor: COLORS.inputBg,
+    borderRadius: 20,
+    paddingHorizontal: 16,
+    paddingVertical: 9,
     fontSize: 15,
     color: COLORS.text,
     marginHorizontal: 4,
@@ -149,9 +158,9 @@ const styles = StyleSheet.create({
   },
   sendBtn: {
     backgroundColor: COLORS.primary,
-    borderRadius: 16,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
+    borderRadius: 18,
+    paddingHorizontal: 16,
+    paddingVertical: 9,
     marginLeft: 4,
   },
   sendBtnDisabled: { backgroundColor: COLORS.border },

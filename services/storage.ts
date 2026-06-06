@@ -64,8 +64,33 @@ export async function toggleComplete(id: string): Promise<Task | null> {
   const task = tasks.find(t => t.id === id);
   if (!task) return null;
   task.completed = !task.completed;
+  task.completedAt = task.completed ? new Date().toISOString() : undefined;
   await saveTasks(tasks);
   return task;
+}
+
+export async function findTaskByTitle(title: string): Promise<Task | null> {
+  const tasks = await loadTasks();
+  const q = title.trim().toLowerCase();
+  const match = tasks.find(t => t.title.toLowerCase().includes(q));
+  return match || null;
+}
+
+export async function batchComplete(filter: string): Promise<number> {
+  const tasks = await loadTasks();
+  const now = new Date().toISOString();
+  let count = 0;
+  for (const t of tasks) {
+    if (t.completed) continue;
+    const match = filter === 'today'
+      ? t.datetime.startsWith(now.slice(0, 10))
+      : filter === 'all'
+      ? true
+      : t.category === filter;
+    if (match) { t.completed = true; t.completedAt = now; count++; }
+  }
+  await saveTasks(tasks);
+  return count;
 }
 
 export async function getTasksByDate(date: string): Promise<Task[]> {

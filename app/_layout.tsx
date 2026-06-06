@@ -6,8 +6,8 @@ import { ThemeProvider } from '../services/theme-context';
 
 export default function RootLayout() {
   useEffect(() => {
-    setupNotificationHandler();
-    requestNotificationPermission();
+    try { setupNotificationHandler(); } catch (e) { console.warn('通知处理器设置失败', e); }
+    requestNotificationPermission().catch(e => console.warn('通知权限请求失败', e));
   }, []);
 
   return (

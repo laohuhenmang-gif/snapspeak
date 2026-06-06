@@ -46,7 +46,17 @@
           "color": "#4A90D9"
         }
       ],
-      "expo-av"
+      "expo-audio",
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "compileSdkVersion": 34,
+            "targetSdkVersion": 34,
+            "minSdkVersion": 23
+          }
+        }
+      ]
     ],
     "extra": {
       "router": {},

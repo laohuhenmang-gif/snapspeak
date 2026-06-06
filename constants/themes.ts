@@ -18,6 +18,8 @@ export interface ThemeColors {
   headerText: string;
   tabBarActive: string;
   inputBg: string;
+  gradientStart: string;
+  gradientEnd: string;
 }
 
 export interface ThemeDefinition {
@@ -50,6 +52,8 @@ const themes: ThemeDefinition[] = [
       headerText: '#FFFFFF',
       tabBarActive: '#FF6B35',
       inputBg: '#F0F0F3',
+      gradientStart: '#F7F7F7',
+      gradientEnd: '#FFF0E8',
     },
   },
   {
@@ -75,6 +79,8 @@ const themes: ThemeDefinition[] = [
       headerText: '#FFFFFF',
       tabBarActive: '#00BFA5',
       inputBg: '#EDF5F2',
+      gradientStart: '#F5FAF8',
+      gradientEnd: '#E0F7F3',
     },
   },
   {
@@ -100,6 +106,8 @@ const themes: ThemeDefinition[] = [
       headerText: '#FFFFFF',
       tabBarActive: '#8B5CF6',
       inputBg: '#EFECF5',
+      gradientStart: '#F8F7FC',
+      gradientEnd: '#F3EEFF',
     },
   },
   {
@@ -125,6 +133,8 @@ const themes: ThemeDefinition[] = [
       headerText: '#FFFFFF',
       tabBarActive: '#2D6BFF',
       inputBg: '#EDF0F5',
+      gradientStart: '#F5F7FC',
+      gradientEnd: '#E8EEFF',
     },
   },
   {
@@ -150,6 +160,35 @@ const themes: ThemeDefinition[] = [
       headerText: '#E8E8F0',
       tabBarActive: '#6C7AFF',
       inputBg: '#1A1A2E',
+      gradientStart: '#0E0E1A',
+      gradientEnd: '#1A1A2E',
+    },
+  },
+  {
+    id: 'dribbble',
+    name: 'Dribbble 紫',
+    colors: {
+      primary: '#7C5CFC',
+      primaryLight: '#EDE9FF',
+      bg: '#F5F0FF',
+      card: '#FFFFFF',
+      text: '#2D1B69',
+      textLight: '#7B6BAE',
+      textMuted: '#A89CC8',
+      border: '#E8E0F0',
+      danger: '#FF6B6B',
+      success: '#2ED573',
+      warning: '#FF9F43',
+      chatBubbleAI: '#FFFFFF',
+      chatBubbleUser: '#7C5CFC',
+      chatBubbleAIText: '#2D1B69',
+      chatBubbleUserText: '#FFFFFF',
+      headerBg: '#7C5CFC',
+      headerText: '#FFFFFF',
+      tabBarActive: '#7C5CFC',
+      inputBg: '#F0ECFF',
+      gradientStart: '#F5F0FF',
+      gradientEnd: '#E8DFFF',
     },
   },
 ];

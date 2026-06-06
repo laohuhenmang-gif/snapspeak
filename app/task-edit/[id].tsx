@@ -6,7 +6,7 @@ import { loadTasks, updateTask, deleteTask } from '../../services/storage';
 import { scheduleTaskReminder, cancelTaskReminder } from '../../services/notification';
 import { editTask } from '../../services/ai';
 import { Priority, Category, RecurringRule, Task } from '../../types';
-import { getApiKey } from '../../services/ai-config';
+import InputBar from '../../components/InputBar';
 
 export default function TaskEditScreen() {
   const router = useRouter();
@@ -19,8 +19,6 @@ export default function TaskEditScreen() {
   const [priority, setPriority] = useState<Priority>('中');
   const [category, setCategory] = useState<Category>('其他');
   const [recurring, setRecurring] = useState<RecurringRule>('none');
-  const [aiInput, setAiInput] = useState('');
-  const [aiProcessing, setAiProcessing] = useState(false);
 
   useEffect(() => {
     loadTasks().then(tasks => {
@@ -63,25 +61,21 @@ export default function TaskEditScreen() {
     ]);
   }, [id, title, router]);
 
-  const handleAIEdit = useCallback(async () => {
-    if (!aiInput.trim() || !task || aiProcessing) return;
-    setAiProcessing(true);
+  const handleEditCommand = useCallback(async (text: string) => {
+    if (!text.trim() || !task) return;
     try {
-      const { changes, summary } = await editTask(task, aiInput.trim());
+      const { changes, summary } = await editTask(task, text.trim());
       if (changes.title !== undefined) setTitle(changes.title);
       if (changes.datetime !== undefined) setDatetime(changes.datetime.slice(0, 16));
       if (changes.priority !== undefined) setPriority(changes.priority);
       if (changes.category !== undefined) setCategory(changes.category);
       if (changes.recurring !== undefined) setRecurring(changes.recurring);
       if (changes.description !== undefined) setDescription(changes.description);
-      setAiInput('');
       Alert.alert(summary);
     } catch (e: any) {
       Alert.alert('AI 处理失败', e.message);
-    } finally {
-      setAiProcessing(false);
     }
-  }, [aiInput, task, aiProcessing]);
+  }, [task]);
 
   if (!task) {
     return <View style={styles.container}><Text style={styles.loading}>加载中...</Text></View>;
@@ -151,24 +145,7 @@ export default function TaskEditScreen() {
         </View>
       </ScrollView>
 
-      <View style={styles.aiBar}>
-        <TextInput
-          style={styles.aiInput}
-          value={aiInput}
-          onChangeText={setAiInput}
-          placeholder="用 AI 修改：改到明天下午 / 加重要…"
-          placeholderTextColor={COLORS.textLight}
-          returnKeyType="send"
-          onSubmitEditing={handleAIEdit}
-        />
-        <TouchableOpacity
-          style={[styles.aiBtn, aiProcessing && { opacity: 0.5 }]}
-          onPress={handleAIEdit}
-          disabled={aiProcessing || !aiInput.trim()}
-        >
-          <Text style={styles.aiBtnText}>{aiProcessing ? '…' : 'AI'}</Text>
-        </TouchableOpacity>
-      </View>
+      <InputBar onSendText={handleEditCommand} onVoiceResult={handleEditCommand} />
 
       <View style={styles.bottomActions}>
         <TouchableOpacity style={styles.deleteBtn} onPress={handleDelete}>
@@ -189,29 +166,40 @@ const styles = StyleSheet.create({
   title: { fontSize: 22, fontWeight: '700', color: COLORS.text, marginBottom: 20 },
   field: { marginBottom: 16 },
   label: { fontSize: 13, fontWeight: '600', color: COLORS.textLight, marginBottom: 6 },
-  input: { backgroundColor: COLORS.card, borderRadius: 12, padding: 14, fontSize: 15, borderWidth: 1, borderColor: COLORS.border, color: COLORS.text },
+  input: {
+    backgroundColor: COLORS.card, borderRadius: 14, padding: 14, fontSize: 15,
+    borderWidth: 1, borderColor: COLORS.border, color: COLORS.text,
+  },
   textArea: { minHeight: 60, textAlignVertical: 'top' },
   optionRow: { flexDirection: 'row', gap: 8, flexWrap: 'wrap' },
-  optionBtn: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 8, backgroundColor: COLORS.card, borderWidth: 1, borderColor: COLORS.border },
+  optionBtn: {
+    paddingHorizontal: 16, paddingVertical: 10, borderRadius: 10,
+    backgroundColor: COLORS.card, borderWidth: 1, borderColor: COLORS.border,
+  },
   optionText: { fontSize: 13, fontWeight: '500', color: COLORS.text },
-  bottomActions: { flexDirection: 'row', gap: 12, padding: 16, paddingBottom: 32, backgroundColor: COLORS.card, borderTopWidth: 1, borderTopColor: COLORS.border },
-  deleteBtn: { flex: 1, padding: 14, borderRadius: 12, borderWidth: 1, borderColor: COLORS.danger, alignItems: 'center' },
+  bottomActions: {
+    flexDirection: 'row', gap: 12, padding: 16, paddingBottom: 32,
+    backgroundColor: COLORS.card, borderTopWidth: 1, borderTopColor: COLORS.border,
+  },
+  deleteBtn: {
+    flex: 1, padding: 14, borderRadius: 14, borderWidth: 1, borderColor: COLORS.danger, alignItems: 'center',
+  },
   deleteText: { color: COLORS.danger, fontSize: 15, fontWeight: '600' },
-  saveBtn: { flex: 2, padding: 14, borderRadius: 12, backgroundColor: COLORS.primary, alignItems: 'center' },
+  saveBtn: { flex: 2, padding: 14, borderRadius: 14, backgroundColor: COLORS.primary, alignItems: 'center' },
   saveText: { color: '#fff', fontSize: 15, fontWeight: '700' },
   aiBar: {
     flexDirection: 'row', alignItems: 'center',
     paddingHorizontal: 12, paddingVertical: 6,
-    backgroundColor: COLORS.primary + '08',
+    backgroundColor: COLORS.primary + '12',
     borderTopWidth: 1, borderTopColor: COLORS.border,
   },
   aiInput: {
-    flex: 1, backgroundColor: COLORS.card, borderRadius: 16,
+    flex: 1, backgroundColor: COLORS.card, borderRadius: 18,
     paddingHorizontal: 14, paddingVertical: 8, fontSize: 14, color: COLORS.text,
     borderWidth: 1, borderColor: COLORS.border,
   },
   aiBtn: {
-    backgroundColor: COLORS.primary, borderRadius: 14,
+    backgroundColor: COLORS.primary, borderRadius: 16,
     paddingHorizontal: 14, paddingVertical: 8, marginLeft: 6,
   },
   aiBtnText: { color: '#fff', fontSize: 13, fontWeight: '700' },

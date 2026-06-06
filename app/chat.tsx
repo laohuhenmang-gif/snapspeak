@@ -83,6 +83,39 @@ export default function ChatScreen() {
           case 'complete':
             if (act.taskId) { await toggleComplete(act.taskId); await cancelTaskReminder(act.taskId); }
             break;
+          case 'batch':
+            if (act.operations) {
+              await executeActions(act.operations);
+            }
+            break;
+          case 'snooze': {
+            const sa = act as { taskId?: string; snoozeMinutes?: number; newDatetime?: string };
+            const mins = sa.snoozeMinutes || 30;
+            const future = new Date(Date.now() + mins * 60000).toISOString();
+            const allS = await loadTasks();
+            let tid = sa.taskId;
+            if (!tid && allS.length === 1) tid = allS[0].id;
+            if (tid) {
+              await updateTask(tid, { datetime: future });
+              await cancelTaskReminder(tid);
+              const u = (await loadTasks()).find(t => t.id === tid);
+              if (u) await scheduleTaskReminder(u);
+            }
+            break;
+          }
+          case 'reschedule': {
+            const ra = act as { taskId?: string; newDatetime?: string };
+            const allR = await loadTasks();
+            let rid = ra.taskId;
+            if (!rid && allR.length === 1) rid = allR[0].id;
+            if (rid && ra.newDatetime) {
+              await updateTask(rid, { datetime: ra.newDatetime });
+              await cancelTaskReminder(rid);
+              const u = (await loadTasks()).find(t => t.id === rid);
+              if (u) await scheduleTaskReminder(u);
+            }
+            break;
+          }
         }
       } catch (e) { console.warn('Action failed:', act, e); }
     }

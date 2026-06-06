@@ -3,7 +3,7 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { COLORS } from '../constants';
 import { playReminderSound, speakReminder } from '../services/speech';
-import { toggleComplete, updateTask } from '../services/storage';
+import { loadTasks, toggleComplete, updateTask } from '../services/storage';
 import { handleReminderResponse } from '../services/ai';
 import { cancelTaskReminder, scheduleTaskReminder } from '../services/notification';
 
@@ -39,7 +39,6 @@ export default function ReminderPopupScreen() {
       now.setMinutes(now.getMinutes() + minutes);
       await updateTask(taskId, { datetime: now.toISOString() });
       await cancelTaskReminder(taskId);
-      const task = (await import('../services/storage')).updateTask;
     }
     dismiss();
   };
@@ -61,13 +60,11 @@ export default function ReminderPopupScreen() {
         if (taskId) {
           await updateTask(taskId, { datetime: result.newDatetime });
           await cancelTaskReminder(taskId);
-          const updated = (await import('../services/storage')).updateTask;
-          const task = await updated(taskId, { datetime: result.newDatetime });
-          if (task) await scheduleTaskReminder(task);
+          const updated = (await loadTasks()).find(t => t.id === taskId);
+          if (updated) await scheduleTaskReminder(updated);
         }
         setTimeout(dismiss, 1500);
       } else {
-        // dismiss
         setTimeout(dismiss, 1000);
       }
     } catch {
@@ -108,7 +105,7 @@ export default function ReminderPopupScreen() {
             value={response}
             onChangeText={setResponse}
             placeholder="对话式处理：推迟1小时 / 明天再做..."
-            placeholderTextColor={COLORS.textLight}
+            placeholderTextColor={COLORS.textMuted}
             returnKeyType="send"
             onSubmitEditing={handleAIResponse}
           />
@@ -126,20 +123,43 @@ export default function ReminderPopupScreen() {
 }
 
 const styles = StyleSheet.create({
-  overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center', padding: 24 },
-  card: { backgroundColor: COLORS.card, borderRadius: 20, padding: 32, width: '100%', alignItems: 'center', shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 20, elevation: 10 },
+  overlay: {
+    flex: 1, backgroundColor: 'rgba(45,27,105,0.4)',
+    justifyContent: 'center', alignItems: 'center', padding: 24,
+  },
+  card: {
+    backgroundColor: COLORS.card, borderRadius: 24, padding: 32,
+    width: '100%', alignItems: 'center',
+    elevation: 10,
+    shadowColor: '#2D1B69',
+    shadowOpacity: 0.15,
+    shadowRadius: 24,
+    shadowOffset: { width: 0, height: 8 },
+  },
   icon: { fontSize: 48, marginBottom: 12 },
   title: { fontSize: 20, fontWeight: '700', color: COLORS.text, marginBottom: 12 },
   taskTitle: { fontSize: 18, fontWeight: '600', color: COLORS.primary, textAlign: 'center', marginBottom: 8 },
   desc: { fontSize: 14, color: COLORS.textLight, textAlign: 'center', marginBottom: 24 },
   actions: { flexDirection: 'row', gap: 12, width: '100%', marginBottom: 16 },
-  snoozeBtn: { flex: 1, padding: 14, borderRadius: 12, borderWidth: 1, borderColor: COLORS.border, alignItems: 'center' },
-  snoozeText: { fontSize: 15, color: COLORS.text },
-  doneBtn: { flex: 1, padding: 14, borderRadius: 12, backgroundColor: COLORS.success, alignItems: 'center' },
+  snoozeBtn: {
+    flex: 1, padding: 14, borderRadius: 14, borderWidth: 1,
+    borderColor: COLORS.border, alignItems: 'center',
+  },
+  snoozeText: { fontSize: 15, color: COLORS.text, fontWeight: '500' },
+  doneBtn: {
+    flex: 1, padding: 14, borderRadius: 14,
+    backgroundColor: COLORS.success, alignItems: 'center',
+  },
   doneText: { fontSize: 15, fontWeight: '600', color: '#fff' },
   feedback: { fontSize: 14, color: COLORS.primary, marginBottom: 12, fontWeight: '500' },
   inputRow: { flexDirection: 'row', gap: 8, width: '100%' },
-  input: { flex: 1, backgroundColor: COLORS.bg, borderRadius: 12, padding: 12, fontSize: 14, color: COLORS.text, borderWidth: 1, borderColor: COLORS.border },
-  aiBtn: { backgroundColor: COLORS.primary, borderRadius: 12, paddingHorizontal: 16, justifyContent: 'center' },
+  input: {
+    flex: 1, backgroundColor: COLORS.inputBg, borderRadius: 14, padding: 14,
+    fontSize: 14, color: COLORS.text, borderWidth: 1, borderColor: COLORS.border,
+  },
+  aiBtn: {
+    backgroundColor: COLORS.primary, borderRadius: 14, paddingHorizontal: 18,
+    justifyContent: 'center',
+  },
   aiBtnText: { color: '#fff', fontSize: 14, fontWeight: '600' },
 });

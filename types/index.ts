@@ -13,6 +13,7 @@ export interface Task {
   category: Category;
   source: 'voice' | 'photo' | 'text';
   createdAt: string;
+  completedAt?: string;
 }
 
 export type TaskInput = Omit<Task, 'id' | 'createdAt'>;
