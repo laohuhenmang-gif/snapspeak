@@ -145,7 +145,7 @@ export default function TaskEditScreen() {
         </View>
       </ScrollView>
 
-      <InputBar onSendText={handleEditCommand} onVoiceResult={handleEditCommand} />
+      <InputBar onSendText={handleEditCommand} onVoiceResult={handleEditCommand} showCamera={false} />
 
       <View style={styles.bottomActions}>
         <TouchableOpacity style={styles.deleteBtn} onPress={handleDelete}>

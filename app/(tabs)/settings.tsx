@@ -1,14 +1,25 @@
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, ScrollView } from 'react-native';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { DEEPSEEK_MODELS } from '../../constants';
 import themes from '../../constants/themes';
 import { saveTasks, loadTasks } from '../../services/storage';
 import { getApiKey, setApiKey, getModel, setModel, clearApiKey } from '../../services/ai-config';
 import { useTheme } from '../../services/theme-context';
 import * as Notifications from 'expo-notifications';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+const MOTION_KEY = '@snapspeak_reduced_motion';
+
+function useReducedMotion(): [boolean, (v: boolean) => void] {
+  const [val, setVal] = useState(false);
+  useEffect(() => { AsyncStorage.getItem(MOTION_KEY).then(v => { if (v) setVal(v === 'true'); }); }, []);
+  const setter = (v: boolean) => { setVal(v); AsyncStorage.setItem(MOTION_KEY, String(v)); };
+  return [val, setter];
+}
 
 export default function SettingsScreen() {
-  const { theme, themeId, setTheme } = useTheme();
+  const { theme, themeId, setTheme, darkMode, setDarkMode } = useTheme();
+  const [reducedMotion, setReducedMotion] = useReducedMotion();
   const [apiKey, setLocalApiKey] = useState('');
   const [model, setLocalModel] = useState('deepseek-chat');
 
@@ -45,6 +56,21 @@ export default function SettingsScreen() {
               onPress={() => setTheme(t.id)}>
               <View style={[styles.themePreview, { backgroundColor: t.colors.primary }]} />
               <Text style={[styles.themeName, { color: theme.text }]}>{t.name}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      </View>
+
+      <View style={[styles.card, { backgroundColor: theme.card }]}>
+        <Text style={[styles.sectionTitle, { color: theme.text }]}>🌙 外观</Text>
+        <View style={styles.row}>
+          {(['system' as const, 'light' as const, 'dark' as const]).map(m => (
+            <TouchableOpacity key={m}
+              style={[styles.optionBtn, { backgroundColor: theme.bg, borderColor: theme.border }, darkMode === m && { backgroundColor: theme.primary, borderColor: theme.primary }]}
+              onPress={() => setDarkMode(m)}>
+              <Text style={[styles.optionText, { color: theme.text }, darkMode === m && { color: '#fff' }]}>
+                {m === 'system' ? '跟随系统' : m === 'light' ? '浅色' : '深色'}
+              </Text>
             </TouchableOpacity>
           ))}
         </View>
@@ -96,6 +122,16 @@ export default function SettingsScreen() {
         <Text style={[styles.value, { color: theme.textLight }]}>DeepSeek Vision</Text>
       </View>
 
+      <View style={[styles.card, { backgroundColor: theme.card }]}>
+        <Text style={[styles.sectionTitle, { color: theme.text }]}>⚡ 性能</Text>
+        <TouchableOpacity style={styles.row} onPress={() => setReducedMotion(!reducedMotion)}>
+          <Text style={[styles.value, { color: theme.textLight, flex: 1 }]}>减少动画效果</Text>
+          <View style={[styles.toggle, { backgroundColor: reducedMotion ? theme.primary : theme.border }]}>
+            <View style={[styles.toggleKnob, reducedMotion && styles.toggleKnobOn]} />
+          </View>
+        </TouchableOpacity>
+      </View>
+
       <TouchableOpacity style={[styles.dangerBtn, { backgroundColor: theme.card }]}
         onPress={handleClearAll}>
         <Text style={{ color: theme.danger, fontSize: 15, fontWeight: '600' }}>清除所有数据</Text>
@@ -124,4 +160,7 @@ const styles = StyleSheet.create({
   themePreview: { width: 36, height: 36, borderRadius: 18 },
   themeName: { fontSize: 12, marginTop: 4, fontWeight: '500' },
   dangerBtn: { borderRadius: 12, padding: 16, alignItems: 'center', marginBottom: 40 },
+  toggle: { width: 48, height: 28, borderRadius: 14, padding: 2 },
+  toggleKnob: { width: 24, height: 24, borderRadius: 12, backgroundColor: '#fff' },
+  toggleKnobOn: { alignSelf: 'flex-end' },
 });

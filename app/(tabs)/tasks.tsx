@@ -5,12 +5,14 @@ import { loadTasks, toggleComplete } from '../../services/storage';
 import { useTheme } from '../../services/theme-context';
 import { CATEGORY_COLORS, CATEGORY_LABELS } from '../../constants';
 import TaskCard from '../../components/TaskCard';
+import ChatSheet from '../../components/ChatSheet';
 
 export default function TasksScreen() {
   const { theme } = useTheme();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [filter, setFilter] = useState<Category | 'all'>('all');
   const [tab, setTab] = useState<'active' | 'completed'>('active');
+  const [chatTask, setChatTask] = useState<Task | null>(null);
 
   const refresh = useCallback(async () => { setTasks(await loadTasks()); }, []);
 
@@ -69,14 +71,12 @@ export default function TasksScreen() {
         keyExtractor={item => item.id}
         renderItem={({ item }) => (
           tab === 'active' ? (
-            <TaskCard task={item} onToggle={handleToggle} />
+            <TaskCard task={item} onToggle={handleToggle} onTap={(t) => setChatTask(t)} />
           ) : (
             <View style={[styles.completedRow, { backgroundColor: theme.card }]}>
               <Text style={styles.completedCheck}>✓</Text>
               <View style={styles.completedInfo}>
-                <Text style={[styles.completedTitle, { color: theme.text }]} numberOfLines={1}>
-                  {item.title}
-                </Text>
+                <Text style={[styles.completedTitle, { color: theme.text }]} numberOfLines={1}>{item.title}</Text>
                 <Text style={[styles.completedDate, { color: theme.textMuted }]}>
                   {item.completedAt ? formatDate(item.completedAt) : ''}
                 </Text>
@@ -87,40 +87,28 @@ export default function TasksScreen() {
         ListEmptyComponent={
           <View style={styles.empty}>
             <Text style={[styles.emptyText, { color: theme.textLight }]}>
-              {tab === 'active'
-                ? (filter === 'all' ? '暂无待办任务' : `暂无「${filter}」待办任务`)
-                : '暂无已完成任务'}
+              {tab === 'active' ? (filter === 'all' ? '暂无待办任务' : `暂无「${filter}」待办任务`) : '暂无已完成任务'}
             </Text>
           </View>
         }
       />
+
+      <ChatSheet visible={!!chatTask} task={chatTask} onClose={() => { setChatTask(null); refresh(); }} />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  segRow: {
-    flexDirection: 'row', paddingHorizontal: 16, paddingVertical: 10, gap: 10,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-  },
+  segRow: { flexDirection: 'row', paddingHorizontal: 16, paddingVertical: 10, gap: 10, borderBottomWidth: StyleSheet.hairlineWidth },
   segBtn: { flex: 1, paddingVertical: 10, borderRadius: 12, alignItems: 'center' },
   segText: { fontSize: 15, fontWeight: '600' },
-  filterRow: {
-    flexDirection: 'row', paddingHorizontal: 16, paddingVertical: 10, gap: 8, flexWrap: 'wrap',
-    borderBottomWidth: StyleSheet.hairlineWidth,
-  },
+  filterRow: { flexDirection: 'row', paddingHorizontal: 16, paddingVertical: 10, gap: 8, flexWrap: 'wrap', borderBottomWidth: StyleSheet.hairlineWidth },
   filterBtn: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20, borderWidth: 1 },
   filterText: { fontSize: 13, fontWeight: '500' },
   empty: { alignItems: 'center', paddingTop: 80 },
   emptyText: { fontSize: 16 },
-  completedRow: {
-    flexDirection: 'row', alignItems: 'center',
-    paddingVertical: 14, paddingHorizontal: 20,
-    marginHorizontal: 16, marginVertical: 3,
-    borderRadius: 16,
-    opacity: 0.7,
-  },
+  completedRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 14, paddingHorizontal: 20, marginHorizontal: 16, marginVertical: 3, borderRadius: 16, opacity: 0.7 },
   completedCheck: { fontSize: 16, color: '#2ED573', marginRight: 14, fontWeight: '700' },
   completedInfo: { flex: 1 },
   completedTitle: { fontSize: 15, textDecorationLine: 'line-through' },

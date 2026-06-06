@@ -191,6 +191,78 @@ const themes: ThemeDefinition[] = [
       gradientEnd: '#E8DFFF',
     },
   },
+  {
+    id: 'doubao-dark',
+    name: '豆包橙·夜',
+    colors: {
+      primary: '#FF6B35', primaryLight: '#3A2015', bg: '#141416', card: '#1E1E22',
+      text: '#E8E8F0', textLight: '#9090AA', textMuted: '#606078', border: '#2A2A35',
+      danger: '#FF6B6B', success: '#51CF66', warning: '#FFD43B',
+      chatBubbleAI: '#1E1E22', chatBubbleUser: '#FF6B35', chatBubbleAIText: '#E8E8F0', chatBubbleUserText: '#FFFFFF',
+      headerBg: '#1A1A20', headerText: '#E8E8F0', tabBarActive: '#FF6B35', inputBg: '#262630',
+      gradientStart: '#141416', gradientEnd: '#1E1E22',
+    },
+  },
+  {
+    id: 'mint-dark',
+    name: '薄荷绿·夜',
+    colors: {
+      primary: '#00BFA5', primaryLight: '#1A2E2A', bg: '#121618', card: '#1C2220',
+      text: '#E0F0EC', textLight: '#8AA8A0', textMuted: '#5A7A72', border: '#2A3530',
+      danger: '#FF6B6B', success: '#51CF66', warning: '#FFD43B',
+      chatBubbleAI: '#1C2220', chatBubbleUser: '#00BFA5', chatBubbleAIText: '#E0F0EC', chatBubbleUserText: '#FFFFFF',
+      headerBg: '#181E1C', headerText: '#E0F0EC', tabBarActive: '#00BFA5', inputBg: '#242C28',
+      gradientStart: '#121618', gradientEnd: '#1C2220',
+    },
+  },
+  {
+    id: 'lavender-dark',
+    name: '芋泥紫·夜',
+    colors: {
+      primary: '#A78BFA', primaryLight: '#2A2040', bg: '#13101A', card: '#1E1B2E',
+      text: '#E8E0F8', textLight: '#9690B0', textMuted: '#6E6A8A', border: '#2A2540',
+      danger: '#FF6B6B', success: '#51CF66', warning: '#FFD43B',
+      chatBubbleAI: '#1E1B2E', chatBubbleUser: '#A78BFA', chatBubbleAIText: '#E8E0F8', chatBubbleUserText: '#FFFFFF',
+      headerBg: '#1A1628', headerText: '#E8E0F8', tabBarActive: '#A78BFA', inputBg: '#26223A',
+      gradientStart: '#13101A', gradientEnd: '#1E1B2E',
+    },
+  },
+  {
+    id: 'ocean-dark',
+    name: '深海蓝·夜',
+    colors: {
+      primary: '#4D8BFF', primaryLight: '#1A2240', bg: '#0E121A', card: '#1A1E2E',
+      text: '#E0E8FF', textLight: '#8A95B0', textMuted: '#5A6A8A', border: '#252A40',
+      danger: '#FF6B6B', success: '#51CF66', warning: '#FFD43B',
+      chatBubbleAI: '#1A1E2E', chatBubbleUser: '#4D8BFF', chatBubbleAIText: '#E0E8FF', chatBubbleUserText: '#FFFFFF',
+      headerBg: '#161A26', headerText: '#E0E8FF', tabBarActive: '#4D8BFF', inputBg: '#22263A',
+      gradientStart: '#0E121A', gradientEnd: '#1A1E2E',
+    },
+  },
+  {
+    id: 'midnight',
+    name: '暗夜黑',
+    colors: {
+      primary: '#6C7AFF', primaryLight: '#1E1E3A', bg: '#0E0E1A', card: '#1A1A2E',
+      text: '#E8E8F0', textLight: '#9090AA', textMuted: '#606078', border: '#2A2A40',
+      danger: '#FF6B6B', success: '#51CF66', warning: '#FFD43B',
+      chatBubbleAI: '#1A1A2E', chatBubbleUser: '#6C7AFF', chatBubbleAIText: '#E8E8F0', chatBubbleUserText: '#FFFFFF',
+      headerBg: '#141428', headerText: '#E8E8F0', tabBarActive: '#6C7AFF', inputBg: '#1A1A2E',
+      gradientStart: '#0E0E1A', gradientEnd: '#1A1A2E',
+    },
+  },
+  {
+    id: 'dribbble-dark',
+    name: 'Dribbble 紫·夜',
+    colors: {
+      primary: '#A78BFA', primaryLight: '#2A1A50', bg: '#100D1F', card: '#1C1732',
+      text: '#EBE5FF', textLight: '#A89CC8', textMuted: '#7B6BAE', border: '#2D2248',
+      danger: '#FF6B6B', success: '#51CF66', warning: '#FFD43B',
+      chatBubbleAI: '#1C1732', chatBubbleUser: '#A78BFA', chatBubbleAIText: '#EBE5FF', chatBubbleUserText: '#FFFFFF',
+      headerBg: '#18142C', headerText: '#EBE5FF', tabBarActive: '#A78BFA', inputBg: '#241E3E',
+      gradientStart: '#100D1F', gradientEnd: '#1C1732',
+    },
+  },
 ];
 
 export default themes;

@@ -13,6 +13,7 @@ import TaskCard from '../../components/TaskCard';
 import InputBar from '../../components/InputBar';
 import ConfirmSheet from '../../components/ConfirmSheet';
 import Toast from '../../components/Toast';
+import ChatSheet from '../../components/ChatSheet';
 
 export default function TodayScreen() {
   const router = useRouter();
@@ -25,6 +26,8 @@ export default function TodayScreen() {
   const [noKey, setNoKey] = useState(false);
   const [suggestion, setSuggestion] = useState('');
   const [briefingCollapsed, setBriefingCollapsed] = useState(true);
+  const [sending, setSending] = useState(false);
+  const [chatSheetOpen, setChatSheetOpen] = useState(false);
 
   const refresh = useCallback(async () => {
     const all = await loadTasks();
@@ -44,7 +47,10 @@ export default function TodayScreen() {
     setSuggestion(sug);
   }, []);
 
-  useFocusEffect(useCallback(() => { refresh(); loadBriefing(); }, []));
+  useFocusEffect(useCallback(() => {
+    refresh(); loadBriefing();
+    getApiKey().then(k => setNoKey(!k));
+  }, []));
 
   useEffect(() => {
     getApiKey().then(k => setNoKey(!k));
@@ -136,7 +142,16 @@ export default function TodayScreen() {
   }, [refresh, loadBriefing]);
 
   const handleSendText = useCallback(async (text: string) => {
+    if (sending) return;
+    setSending(true);
     try {
+      const key = await getApiKey();
+      if (!key) {
+        setNoKey(true);
+        toast('请先在设置中配置 DeepSeek API Key', 'warn');
+        return;
+      }
+      setNoKey(false);
       const actions = await multiIntent(text);
       if (actions.length === 1 && actions[0].action === 'unknown') {
         toast(actions[0].message || '没理解您的意思，请换个说法', 'warn');
@@ -144,9 +159,11 @@ export default function TodayScreen() {
       }
       await executeActions(actions, text);
     } catch (e: any) {
-      toast(e.message || 'AI 处理失败', 'warn');
+      toast(e.message || '处理失败，请检查网络和 API Key', 'warn');
+    } finally {
+      setSending(false);
     }
-  }, [executeActions]);
+  }, [sending, executeActions]);
 
   const handleVoiceResult = useCallback((text: string) => { handleSendText(text); }, [handleSendText]);
 
@@ -210,9 +227,15 @@ export default function TodayScreen() {
       />
 
       <TouchableOpacity style={[styles.chatFab, { backgroundColor: theme.primary }]}
-        onPress={() => router.push('/chat')}>
+        onPress={() => setChatSheetOpen(true)}>
         <Text style={styles.chatFabText}>💬</Text>
       </TouchableOpacity>
+
+      <ChatSheet
+        visible={chatSheetOpen}
+        onClose={() => setChatSheetOpen(false)}
+        task={null}
+      />
 
       <ConfirmSheet visible={showConfirm} result={aiResult}
         onConfirm={handleConfirm}

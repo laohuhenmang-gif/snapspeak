@@ -1,40 +1,39 @@
-import { View, TextInput, TouchableOpacity, StyleSheet, Animated } from 'react-native';
+import { View, TextInput, TouchableOpacity, StyleSheet, Animated, Text, PanResponder } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useState, useRef, useCallback } from 'react';
+import * as Haptics from 'expo-haptics';
 import { COLORS } from '../constants';
 
 interface InputBarProps {
   onSendText: (text: string) => void;
   onVoiceResult: (text: string) => void;
+  showCamera?: boolean;
 }
 
-export default function InputBar({ onSendText, onVoiceResult }: InputBarProps) {
+export default function InputBar({ onSendText, onVoiceResult, showCamera = true }: InputBarProps) {
   const router = useRouter();
   const [text, setText] = useState('');
-  const [isRecording, setIsRecording] = useState(false);
+  const [inputMode, setInputMode] = useState<'text' | 'voice'>('text');
+  const [recording, setRecording] = useState(false);
+  const [cancelling, setCancelling] = useState(false);
   const pulseAnim = useRef(new Animated.Value(1)).current;
-  const ringAnim = useRef(new Animated.Value(1)).current;
-  const inputRef = useRef<TextInput>(null);
+  const modeAnim = useRef(new Animated.Value(1)).current;
+  const voiceBtnScale = useRef(new Animated.Value(1)).current;
+  const cancelZone = useRef(new Animated.Value(0)).current;
 
   const startPulse = useCallback(() => {
     Animated.loop(
       Animated.sequence([
-        Animated.parallel([
-          Animated.timing(pulseAnim, { toValue: 1.2, duration: 400, useNativeDriver: true }),
-          Animated.timing(ringAnim, { toValue: 1.4, duration: 400, useNativeDriver: true }),
-        ]),
-        Animated.parallel([
-          Animated.timing(pulseAnim, { toValue: 1, duration: 400, useNativeDriver: true }),
-          Animated.timing(ringAnim, { toValue: 1, duration: 400, useNativeDriver: true }),
-        ]),
+        Animated.timing(pulseAnim, { toValue: 1.15, duration: 300, useNativeDriver: true }),
+        Animated.timing(pulseAnim, { toValue: 0.95, duration: 300, useNativeDriver: true }),
       ]),
     ).start();
-  }, [pulseAnim, ringAnim]);
+  }, [pulseAnim]);
 
   const stopPulse = useCallback(() => {
+    pulseAnim.stopAnimation();
     pulseAnim.setValue(1);
-    ringAnim.setValue(1);
-  }, [pulseAnim, ringAnim]);
+  }, [pulseAnim]);
 
   const handleSend = useCallback(() => {
     const trimmed = text.trim();
@@ -43,81 +42,125 @@ export default function InputBar({ onSendText, onVoiceResult }: InputBarProps) {
     setText('');
   }, [text, onSendText]);
 
+  const switchToVoice = useCallback(() => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setInputMode('voice');
+  }, []);
+
+  const switchToText = useCallback(() => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setInputMode('text');
+  }, []);
+
   const startRecording = useCallback(() => {
-    setIsRecording(true);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    setRecording(true);
+    setCancelling(false);
     startPulse();
-  }, [startPulse]);
+    Animated.spring(voiceBtnScale, { toValue: 1.3, useNativeDriver: true }).start();
+  }, [startPulse, voiceBtnScale]);
+
+  const onPanResponderMove = useCallback((_: any, gs: { dy: number }) => {
+    if (gs.dy < -60) {
+      if (!cancelling) {
+        setCancelling(true);
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+      }
+      Animated.timing(cancelZone, { toValue: 1, duration: 100, useNativeDriver: true }).start();
+    } else {
+      if (cancelling) setCancelling(false);
+      Animated.timing(cancelZone, { toValue: 0, duration: 100, useNativeDriver: true }).start();
+    }
+  }, [cancelling, cancelZone]);
 
   const stopRecording = useCallback(() => {
-    setIsRecording(false);
+    const wasCancelling = cancelling;
+    setRecording(false);
+    setCancelling(false);
     stopPulse();
-    const mockResult = '下周二下午三点开会讨论项目进度';
-    onVoiceResult(mockResult);
-  }, [stopPulse, onVoiceResult]);
+    cancelZone.setValue(0);
+    Animated.spring(voiceBtnScale, { toValue: 1, useNativeDriver: true }).start();
 
-  const [inputFocused, setInputFocused] = useState(false);
+    if (!wasCancelling) {
+      const mockResult = '下周二下午三点开会讨论项目进度';
+      onVoiceResult(mockResult);
+    }
+  }, [cancelling, stopPulse, voiceBtnScale, cancelZone, onVoiceResult]);
+
+  const panResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: () => true,
+      onPanResponderGrant: startRecording,
+      onPanResponderMove: onPanResponderMove,
+      onPanResponderRelease: stopRecording,
+    }),
+  ).current;
 
   return (
-    <View style={[styles.container, inputFocused && styles.containerFocused]}>
-      <TouchableOpacity
-        style={styles.cameraBtn}
-        onPress={() => router.push('/new-task/camera')}
-      >
-        <Animated.Text style={styles.cameraIcon}>📷</Animated.Text>
-      </TouchableOpacity>
-
-      <View style={styles.micWrapper}>
-        {isRecording && (
-          <Animated.View
-            style={[styles.recRing, { transform: [{ scale: ringAnim }] }]}
+    <View style={styles.wrapper}>
+      {inputMode === 'text' ? (
+        <View style={styles.container}>
+          {showCamera && (
+            <TouchableOpacity style={styles.cameraBtn} onPress={() => router.push('/new-task/camera')}>
+              <Text style={styles.cameraIcon}>📷</Text>
+            </TouchableOpacity>
+          )}
+          <TouchableOpacity style={styles.micBtn} onPress={switchToVoice}>
+            <Text style={styles.micIcon}>🎤</Text>
+          </TouchableOpacity>
+          <TextInput
+            style={styles.input}
+            value={text}
+            onChangeText={setText}
+            placeholder="输入新任务…"
+            placeholderTextColor={COLORS.textMuted}
+            returnKeyType="send"
+            onSubmitEditing={handleSend}
           />
-        )}
-        <TouchableOpacity
-          onPressIn={startRecording}
-          onPressOut={stopRecording}
-          activeOpacity={0.7}
-          style={styles.micBtn}
-        >
-          <Animated.Text style={[styles.micIcon, isRecording && styles.micActive]}>
-            {isRecording ? '🔴' : '🎤'}
-          </Animated.Text>
-        </TouchableOpacity>
-      </View>
-
-      <TextInput
-        ref={inputRef}
-        style={styles.input}
-        value={text}
-        onChangeText={setText}
-        placeholder="输入新任务…"
-        placeholderTextColor={COLORS.textMuted}
-        returnKeyType="send"
-        onSubmitEditing={handleSend}
-        onFocus={() => setInputFocused(true)}
-        onBlur={() => setInputFocused(false)}
-      />
-
-      <TouchableOpacity
-        style={[styles.sendBtn, !text.trim() && styles.sendBtnDisabled]}
-        onPress={handleSend}
-        disabled={!text.trim()}
-      >
-        <Animated.Text style={[styles.sendText, !text.trim() && styles.sendTextDisabled]}>
-          发送
-        </Animated.Text>
-      </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.sendBtn, !text.trim() && styles.sendBtnDisabled]}
+            onPress={handleSend}
+            disabled={!text.trim()}
+          >
+            <Text style={[styles.sendText, !text.trim() && styles.sendTextDisabled]}>发送</Text>
+          </TouchableOpacity>
+        </View>
+      ) : (
+        <View style={styles.voiceContainer}>
+          <TouchableOpacity style={styles.keyboardBtn} onPress={switchToText}>
+            <Text style={styles.keyboardIcon}>⌨️</Text>
+          </TouchableOpacity>
+          <View style={styles.voiceBtnWrap}>
+            {recording && (
+              <Animated.View style={[styles.recordRing, { transform: [{ scale: pulseAnim }] }]} />
+            )}
+            <Animated.View
+              style={[styles.voiceBtn, recording && styles.voiceBtnActive, { transform: [{ scale: voiceBtnScale }] }]}
+              {...panResponder.panHandlers}
+            >
+              <Text style={styles.voiceBtnIcon}>{recording ? '🔴' : '🎤'}</Text>
+            </Animated.View>
+          </View>
+          <Text style={[styles.voiceHint, recording && { color: cancelling ? COLORS.danger : COLORS.primary }]}>
+            {recording ? (cancelling ? '松手取消' : '上滑取消 · 松开发送') : '按住说话'}
+          </Text>
+        </View>
+      )}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
+  wrapper: {
+    paddingHorizontal: 12, paddingBottom: 12,
+  },
   container: {
     flexDirection: 'row', alignItems: 'center',
-    marginHorizontal: 12, marginBottom: 8,
     paddingHorizontal: 10, paddingVertical: 8,
     backgroundColor: COLORS.card,
     borderRadius: 28,
-    borderWidth: 1,
+    borderWidth: StyleSheet.hairlineWidth,
     borderColor: COLORS.border,
     elevation: 4,
     shadowColor: '#7C5CFC',
@@ -125,29 +168,13 @@ const styles = StyleSheet.create({
     shadowRadius: 12,
     shadowOffset: { width: 0, height: 2 },
   },
-  containerFocused: {
-    borderColor: COLORS.primary,
-    shadowOpacity: 0.12,
-  },
   cameraBtn: { padding: 6 },
   cameraIcon: { fontSize: 20 },
-  micWrapper: { position: 'relative', marginHorizontal: 4 },
-  micBtn: {
-    width: 36, height: 36, borderRadius: 18,
-    backgroundColor: COLORS.bg,
-    justifyContent: 'center', alignItems: 'center',
-  },
-  micIcon: { fontSize: 18 },
-  micActive: { fontSize: 18 },
-  recRing: {
-    position: 'absolute', top: -4, left: -4,
-    width: 44, height: 44, borderRadius: 22,
-    borderWidth: 2, borderColor: COLORS.danger,
-    opacity: 0.3,
-  },
+  micBtn: { padding: 6, marginHorizontal: 2 },
+  micIcon: { fontSize: 20 },
   input: {
     flex: 1,
-    backgroundColor: COLORS.inputBg,
+    backgroundColor: COLORS.bg,
     borderRadius: 20,
     paddingHorizontal: 16,
     paddingVertical: 9,
@@ -166,4 +193,45 @@ const styles = StyleSheet.create({
   sendBtnDisabled: { backgroundColor: COLORS.border },
   sendText: { color: '#fff', fontSize: 14, fontWeight: '600' },
   sendTextDisabled: { color: COLORS.textLight },
+  voiceContainer: {
+    flexDirection: 'row', alignItems: 'center',
+    paddingHorizontal: 10, paddingVertical: 8,
+    backgroundColor: COLORS.card,
+    borderRadius: 28,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: COLORS.border,
+    elevation: 4,
+    shadowColor: '#7C5CFC',
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 2 },
+  },
+  keyboardBtn: { padding: 6 },
+  keyboardIcon: { fontSize: 20 },
+  voiceBtnWrap: {
+    flex: 1, alignItems: 'center', justifyContent: 'center',
+    position: 'relative',
+  },
+  voiceBtn: {
+    width: 52, height: 52, borderRadius: 26,
+    backgroundColor: COLORS.primary,
+    justifyContent: 'center', alignItems: 'center',
+    elevation: 4,
+    shadowColor: COLORS.primary,
+    shadowOpacity: 0.35,
+    shadowRadius: 8,
+  },
+  voiceBtnActive: { backgroundColor: COLORS.danger },
+  voiceBtnIcon: { fontSize: 24 },
+  recordRing: {
+    position: 'absolute',
+    width: 70, height: 70, borderRadius: 35,
+    borderWidth: 2,
+    borderColor: COLORS.danger,
+    opacity: 0.25,
+  },
+  voiceHint: {
+    fontSize: 12, color: COLORS.textMuted,
+    width: 70, textAlign: 'center', marginLeft: 8,
+  },
 });
