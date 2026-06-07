@@ -6,6 +6,7 @@ import { loadTasks, updateTask, deleteTask } from '../../services/storage';
 import { scheduleTaskReminder, cancelTaskReminder } from '../../services/notification';
 import { editTask } from '../../services/ai';
 import { Priority, Category, RecurringRule, Task } from '../../types';
+import { InteractionState } from '../../constants/interaction';
 import InputBar from '../../components/InputBar';
 
 export default function TaskEditScreen() {
@@ -19,6 +20,7 @@ export default function TaskEditScreen() {
   const [priority, setPriority] = useState<Priority>('中');
   const [category, setCategory] = useState<Category>('其他');
   const [recurring, setRecurring] = useState<RecurringRule>('none');
+  const [aiState, setAiState] = useState<InteractionState>('idle');
 
   useEffect(() => {
     loadTasks().then(tasks => {
@@ -145,7 +147,7 @@ export default function TaskEditScreen() {
         </View>
       </ScrollView>
 
-      <InputBar onSendText={handleEditCommand} onVoiceResult={handleEditCommand} showCamera={false} />
+      <InputBar state={aiState} onStateChange={setAiState} onSendText={handleEditCommand} onVoiceResult={handleEditCommand} onCameraResult={() => {}} />
 
       <View style={styles.bottomActions}>
         <TouchableOpacity style={styles.deleteBtn} onPress={handleDelete}>

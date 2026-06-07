@@ -2,7 +2,7 @@ import { View, Text, TouchableOpacity, StyleSheet, BackHandler, TextInput, Keybo
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { COLORS } from '../constants';
-import { playReminderSound, speakReminder } from '../services/speech';
+import { playBeepSound, speakReminder } from '../services/speech';
 import { loadTasks, toggleComplete, updateTask } from '../services/storage';
 import { handleReminderResponse } from '../services/ai';
 import { cancelTaskReminder, scheduleTaskReminder } from '../services/notification';
@@ -20,7 +20,7 @@ export default function ReminderPopupScreen() {
 
   useEffect(() => {
     speakReminder('提醒：' + title);
-    playReminderSound();
+    playBeepSound();
     const handler = BackHandler.addEventListener('hardwareBackPress', () => true);
     return () => handler.remove();
   }, []);

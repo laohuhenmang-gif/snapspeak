@@ -68,6 +68,10 @@ export default function ConfirmScreen() {
           recurring,
           category,
           source,
+          postponed_count: 0,
+          current_blocker_reason: '',
+          needs_precheck: false,
+          project_name: '',
         });
         await scheduleTaskReminder(task);
       }

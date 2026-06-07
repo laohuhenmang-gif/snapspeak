@@ -1,8 +1,8 @@
 {
   "expo": {
-    "name": "语拍提醒",
+    "name": "语拍提醒 · AI助理",
     "slug": "snapspeak",
-    "version": "0.4.1",
+    "version": "1.0.0",
     "scheme": "snapspeak",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -56,7 +56,8 @@
         }
       ],
       "expo-font",
-      "expo-asset"
+      "expo-asset",
+      "expo-speech-recognition"
     ],
     "extra": {
       "router": {},

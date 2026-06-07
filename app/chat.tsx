@@ -65,6 +65,7 @@ export default function ChatScreen() {
                 title: act.title, description: act.notes || '', category: act.category || '其他',
                 priority: act.priority || '中', completed: false, recurring: act.recurring || 'none',
                 datetime: act.datetime || new Date().toISOString(), source: 'text',
+                postponed_count: 0, current_blocker_reason: '', needs_precheck: false, project_name: '',
               });
               if (act.datetime) await scheduleTaskReminder(task);
             }
