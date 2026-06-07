@@ -1,7 +1,7 @@
 export type Category = '工作' | '学习' | '健康' | '生活' | '其他';
 export type Priority = '高' | '中' | '低';
 export type RecurringRule = 'none' | '每天' | '每周' | '每月' | '工作日' | '每两周';
-export type SourceType = 'voice' | 'photo' | 'text';
+export type SourceType = 'voice' | 'photo' | 'text' | 'ai';
 
 export interface Task {
   id: string;

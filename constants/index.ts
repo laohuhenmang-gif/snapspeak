@@ -21,6 +21,24 @@ export const COLORS = {
   chatBubbleAIText: '#000000',
 };
 
+// 深色模式颜色
+export const DARK_COLORS = {
+  bg: '#1C1C1E',
+  card: '#2C2C2E',
+  text: '#FFFFFF',
+  textSecondary: '#AEAEB2',
+  textMuted: '#636366',
+  border: '#38383A',
+  inputBg: '#2C2C2E',
+  chatBubbleUser: '#0A84FF',
+  chatBubbleUserText: '#FFFFFF',
+  chatBubbleAI: '#2C2C2E',
+  chatBubbleAIText: '#FFFFFF',
+  priorityHigh: '#FF453A',
+  priorityMedium: '#FF9F0A',
+  priorityLow: '#30D158',
+};
+
 export const PRIORITY_LABELS = ['高', '中', '低'] as const;
 
 export const RECURRING_LABELS: Record<string, string> = {
@@ -43,8 +61,6 @@ export const CATEGORY_COLORS: Record<string, string> = {
 export const CATEGORY_LABELS = ['工作', '学习', '健康', '生活', '其他'] as const;
 
 export const DEEPSEEK_MODELS = [
-  { id: 'deepseek-chat', label: 'V3 Chat (文本)' },
+  { id: 'deepseek-chat', label: 'V3 Chat (文本+图片)' },
   { id: 'deepseek-reasoner', label: 'V3 Reasoner (推理)' },
-  { id: 'deepseek-v4-flash', label: 'V4 Flash (文本+图片)' },
-  { id: 'deepseek-v4-pro', label: 'V4 Pro (文本+图片)' },
 ] as const;

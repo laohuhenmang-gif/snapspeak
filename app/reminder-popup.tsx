@@ -39,6 +39,11 @@ export default function ReminderPopupScreen() {
       now.setMinutes(now.getMinutes() + minutes);
       await updateTask(taskId, { datetime: now.toISOString() });
       await cancelTaskReminder(taskId);
+      // Schedule a new reminder at the snoozed time
+      const task = (await loadTasks()).find(t => t.id === taskId);
+      if (task) {
+        await scheduleTaskReminder(task);
+      }
     }
     dismiss();
   };

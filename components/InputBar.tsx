@@ -8,11 +8,13 @@ import {
   PanResponder,
   Alert,
 } from 'react-native';
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import * as Haptics from 'expo-haptics';
 import * as ImagePicker from 'expo-image-picker';
 import { COLORS } from '../constants';
 import { InputMode, InteractionState, ERROR_MESSAGES } from '../constants/interaction';
+import { ensureSpeechPermission, startListening, stopListening } from '../services/speech';
+import { requestNotificationPermission } from '../services/notification';
 
 interface InputBarProps {
   onSendText: (text: string) => void;
@@ -20,6 +22,8 @@ interface InputBarProps {
   onCameraResult: (imageUri: string) => void;
   state: InteractionState;
   onStateChange?: (state: InteractionState) => void;
+  /** 是否将语音识别结果填入输入框（可编辑）而非直接发送 */
+  editableVoiceResult?: boolean;
 }
 
 export default function InputBar({
@@ -28,8 +32,10 @@ export default function InputBar({
   onCameraResult,
   state,
   onStateChange,
+  editableVoiceResult = true,
 }: InputBarProps) {
   const [text, setText] = useState('');
+  const voiceInputRef = useRef<string>('');
   const [inputMode, setInputMode] = useState<InputMode>('text');
   const [cancelling, setCancelling] = useState(false);
   const pulseAnim = useRef(new Animated.Value(1)).current;
@@ -145,14 +151,58 @@ export default function InputBar({
     ]);
   }, [isBusy, onCameraResult, setState]);
 
-  // Voice recording
-  const startRecording = useCallback(() => {
+  // Voice recording — real STT
+  const stopListeningRef = useRef<(() => void) | null>(null);
+
+  const startRecording = useCallback(async () => {
+    // 1. Check microphone permission first
+    const hasPermission = await ensureSpeechPermission();
+    if (!hasPermission) {
+      Alert.alert('需要录音权限', '语音输入需要麦克风权限，请在系统设置中开启后重试');
+      setState('idle');
+      return;
+    }
+
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     setCancelling(false);
     setState('listening');
     startPulse();
     Animated.spring(voiceBtnScale, { toValue: 1.3, useNativeDriver: true }).start();
-  }, [startPulse, voiceBtnScale, setState]);
+
+    // 2. Start real speech recognition
+    const cleanup = startListening(
+      (text: string) => {
+        // Partial result — could update UI for live preview
+      },
+      (text: string) => {
+        // Final result — stop listening
+        stopPulse();
+        Animated.spring(voiceBtnScale, { toValue: 1, useNativeDriver: true }).start();
+        if (text && text.trim()) {
+          const trimmed = text.trim();
+          if (editableVoiceResult) {
+            // 填入文本框让用户编辑，再切换为文字模式
+            setText(trimmed);
+            voiceInputRef.current = trimmed;
+            setInputMode('text');
+            setState('idle');
+          } else {
+            onVoiceResult(trimmed);
+          }
+        } else {
+          setState('idle');
+        }
+      },
+      (error: string) => {
+        // Error during recognition
+        stopPulse();
+        Animated.spring(voiceBtnScale, { toValue: 1, useNativeDriver: true }).start();
+        Alert.alert('语音识别失败', error || '无法识别语音，请重试');
+        setState('idle');
+      },
+    );
+    stopListeningRef.current = cleanup;
+  }, [startPulse, voiceBtnScale, setState, onVoiceResult]);
 
   const onPanResponderMove = useCallback(
     (_: any, gs: { dy: number }) => {
@@ -168,27 +218,33 @@ export default function InputBar({
     [cancelling],
   );
 
-  const stopRecording = useRef((_cancelling: boolean) => {
+  const stopRecording = useCallback((_cancelling: boolean) => {
     stopPulse();
     Animated.spring(voiceBtnScale, { toValue: 1, useNativeDriver: true }).start();
+    // Stop real STT
+    if (stopListeningRef.current) {
+      stopListeningRef.current();
+      stopListeningRef.current = null;
+    }
     if (_cancelling) {
       setState('idle');
     } else {
       setState('transcribing');
-      // Mock STT — 生产环境替换为真实语音识别
-      onVoiceResult('下周二下午三点开会讨论项目进度');
+      // Real STT uses callbacks; no mock fallback needed
     }
-  }).current;
+  }, [stopPulse, voiceBtnScale, setState]);
 
   const panResponder = useRef(
     PanResponder.create({
       onStartShouldSetPanResponder: () => true,
       onMoveShouldSetPanResponder: () => true,
-      onPanResponderGrant: startRecording,
+      onPanResponderGrant: () => startRecording(),
       onPanResponderMove,
       onPanResponderRelease: () => {
-        setCancelling(true);
-        stopRecording(true);
+        setCancelling((prev) => {
+          stopRecording(prev);
+          return prev;
+        });
       },
     }),
   ).current;

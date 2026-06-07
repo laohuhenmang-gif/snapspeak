@@ -1,6 +1,11 @@
 import { Task, AIParseResult, ReminderAction } from '../types';
 import { getApiKey, getModel } from './ai-config';
 import { AGENT_SYSTEM_PROMPT, AIAction, AIChatMessage, AIChatResponse } from './ai-types';
+import { 
+  loadConfirmedMemories, 
+  loadBlockersByTask, 
+  loadReflectionByDate,
+} from './storage';
 
 const DEEPSEEK_BASE = 'https://api.deepseek.com';
 
@@ -44,7 +49,61 @@ function buildContext(extra?: string): string {
   return ctx;
 }
 
-// --- 对话式 AI 助手（豆包风格）---
+/**
+ * 加载知识库上下文，供 AI chat 使用
+ */
+async function buildKnowledgeContext(todayTasks: Task[]): Promise<string> {
+  const parts: string[] = [];
+
+  try {
+    // 1. 用户已确认的偏好和规则
+    const confirmed = await loadConfirmedMemories();
+    const preferences = confirmed.filter((m: any) => m.memory_type === 'preference' || m.memory_type === 'rule');
+    if (preferences.length > 0) {
+      parts.push('## 我已记住的用户偏好和规则');
+      preferences.forEach((m: any) => {
+        parts.push(`  - ${m.content}`);
+      });
+    }
+
+    // 2. 今日待办中未解决的卡点
+    const unresolvedBlockers: string[] = [];
+    for (const task of todayTasks.filter(t => !t.completed)) {
+      const blockers = await loadBlockersByTask(task.id);
+      const active = blockers.filter((b: any) => !b.resolved);
+      if (active.length > 0) {
+        unresolvedBlockers.push(`  任务「${task.title}」：${active.map((b: any) => b.blocker_text).join('；')}`);
+      }
+    }
+    if (unresolvedBlockers.length > 0) {
+      parts.push('## 今日待办中的未解决卡点');
+      parts.push(unresolvedBlockers.join('\n'));
+    }
+
+    // 3. 昨日复盘总结（如果有）
+    const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+    const yesterdayReflection = await loadReflectionByDate(yesterday);
+    if (yesterdayReflection) {
+      parts.push('## 昨日复盘');
+      if (yesterdayReflection.ai_summary) parts.push(`  ${yesterdayReflection.ai_summary}`);
+      if (yesterdayReflection.ai_suggestion) parts.push(`  AI 建议：${yesterdayReflection.ai_suggestion}`);
+      if (yesterdayReflection.main_blockers_json) {
+        try {
+          const blockers = JSON.parse(yesterdayReflection.main_blockers_json);
+          if (Array.isArray(blockers) && blockers.length > 0) {
+            parts.push(`  主要卡点：${blockers.join('、')}`);
+          }
+        } catch {}
+      }
+    }
+  } catch (e) {
+    // 知识库加载失败不阻塞主流程
+  }
+
+  return parts.length > 0 ? parts.join('\n\n') : '';
+}
+
+// --- 对话式 AI 助手 ---
 export async function chat(
   userMessage: string,
   history: AIChatMessage[],
@@ -53,14 +112,22 @@ export async function chat(
 ): Promise<AIChatResponse> {
   const context = buildContext();
   const todayStr = todayTasks.filter(t => !t.completed)
-    .map(t => `  [${t.priority}] ${t.datetime?.slice(11,16) || ''} ${t.title}`)
+    .map(t => `  [${t.priority}] ${t.datetime?.slice(11,16) || ''} ${t.title}${t.needs_precheck ? ' (需前置准备)' : ''}`)
     .join('\n');
 
-  const systemMsg = `${AGENT_SYSTEM_PROMPT}\n\n## 回复格式\n必须以纯 JSON 返回，不要用 \`\`\`json 包裹，字段：{"reply": "对用户说的话", "actions": [...]}。reply 字段必填。\n\n## 当前上下文
+  // 加载知识库
+  const kbContext = await buildKnowledgeContext(todayTasks);
+
+  let systemMsg = `${AGENT_SYSTEM_PROMPT}\n\n## 回复格式\n必须以纯 JSON 返回，不要用 \`\`\`json 包裹，字段：{"reply": "对用户说的话", "actions": [...]}。reply 字段必填。\n\n## 当前上下文
 ${context}
 今日待办任务：
 ${todayStr || '  今天没有待办任务'}
 任务总数：${allTasks.length}`;
+
+  // 如果有知识库信息，追加到上下文中
+  if (kbContext) {
+    systemMsg += `\n\n## 知识库上下文\n${kbContext}`;
+  }
 
   const chatHistory = history.slice(-20).map(m => ({
     role: m.role,
@@ -152,12 +219,23 @@ export async function generateBriefing(tasks: Task[]): Promise<string> {
 
   const taskSummary = tasks.filter(t => !t.completed).map(t => {
     const time = t.datetime ? ` ${t.datetime.slice(11, 16)}` : '';
-    return `- [${t.priority}]${time} ${t.title}`;
+    const precheck = t.needs_precheck ? ' (需前置准备)' : '';
+    return `- [${t.priority}]${time} ${t.title}${precheck}`;
   }).join('\n');
 
   try {
+    // 加载昨日复盘信息
+    const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+    let extraContext = '';
+    try {
+      const reflection = await loadReflectionByDate(yesterday);
+      if (reflection?.ai_suggestion) {
+        extraContext = `\n昨日 AI 建议：${reflection.ai_suggestion}`;
+      }
+    } catch {}
+
     const result = await callDeepSeek([
-      { role: 'system', content: `你是一个贴心的每日简报助手。以"${greeting}"开头，生成 1-3 句中文问候，简洁温暖，指出最重要的任务。不要 JSON。` },
+      { role: 'system', content: `你是一个贴心的每日简报助手。以"${greeting}"开头，生成 1-3 句中文问候，简洁温暖，指出最重要的任务。不要 JSON。${extraContext}` },
       { role: 'user', content: `今天的待办任务：\n${taskSummary}` },
     ], false);
     return result || `${greeting}！今天有 ${tasks.filter(t => !t.completed).length} 个待办任务。`;
@@ -212,4 +290,50 @@ export async function multiIntent(text: string): Promise<AIAction[]> {
 
   try { const parsed = JSON.parse(result); return Array.isArray(parsed.actions) ? parsed.actions : [parsed]; }
   catch { return [{ action: 'unknown', message: '没理解您的意思' } as AIAction]; }
+}
+
+// --- 每日复盘生成 ---
+export async function generateDailyReview(
+  tasks: Task[],
+  todayStr: string,
+): Promise<{ ai_summary: string; ai_suggestion: string; completion_rate: number }> {
+  const plannedCount = tasks.filter(t => !t.completed || t.datetime?.startsWith(todayStr)).length;
+  const completedCount = tasks.filter(t => t.completed && t.completedAt?.startsWith(todayStr)).length;
+  const overdueCount = tasks.filter(t => !t.completed && t.due_at && t.due_at < new Date().toISOString()).length;
+  const rate = plannedCount > 0 ? Math.round((completedCount / plannedCount) * 100) : 0;
+
+  // 收集未完成原因
+  const incompleteTasks = tasks.filter(t => !t.completed && t.datetime?.startsWith(todayStr));
+  const blockersList = incompleteTasks.map(t => t.current_blocker_reason || t.title).filter(Boolean);
+
+  try {
+    const taskList = tasks.filter(t => t.datetime?.startsWith(todayStr)).map(t =>
+      `  [${t.completed ? '✅' : '⬜'}] ${t.title}${t.current_blocker_reason ? ' (原因：' + t.current_blocker_reason + ')' : ''}`
+    ).join('\n');
+
+    const result = await callDeepSeek([
+      { role: 'system', content: `你是一个贴心的每日工作复盘助手。今天是 ${todayStr}。
+
+生成简短的中文复盘，包含：
+1. 今天完成情况和完成率
+2. 未完成的主要卡点
+3. 一个明确的明日建议
+
+返回纯 JSON：{"summary":"...","suggestion":"..."}。不要用 \`\`\`json 包裹。` },
+      { role: 'user', content: `今天计划 ${plannedCount} 件，完成 ${completedCount} 件，完成率 ${rate}%。\n任务详情：\n${taskList || '  无今日任务'}` },
+    ], true);
+
+    const parsed = JSON.parse(result);
+    return {
+      ai_summary: parsed.summary || `今天完成 ${completedCount}/${plannedCount} 件事，完成率 ${rate}%。`,
+      ai_suggestion: parsed.suggestion || '继续保持。',
+      completion_rate: rate,
+    };
+  } catch {
+    return {
+      ai_summary: `今天完成 ${completedCount}/${plannedCount} 件事，完成率 ${rate}%。`,
+      ai_suggestion: '继续保持。',
+      completion_rate: rate,
+    };
+  }
 }

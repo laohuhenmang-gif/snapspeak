@@ -22,6 +22,7 @@ export interface ConfirmCardData {
   items?: { label: string; value: string }[];
   actions: ConfirmCardAction[];
   context?: string; // raw AI action payload for execution
+  related_task_id?: string;
 }
 
 export interface ConfirmCardAction {
