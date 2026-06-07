@@ -5,8 +5,7 @@
   "build": {
     "preview": {
       "android": {
-        "buildType": "apk",
-        "withoutCredentials": true
+        "buildType": "apk"
       }
     },
     "production": {
