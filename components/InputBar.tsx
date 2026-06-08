@@ -40,6 +40,7 @@ export default function InputBar({
   const [cancelling, setCancelling] = useState(false);
   const pulseAnim = useRef(new Animated.Value(1)).current;
   const voiceBtnScale = useRef(new Animated.Value(1)).current;
+  const lastPartialRef = useRef<string>('');
 
   // Use explicit boolean flags to avoid TS narrowing issues
   const isBusy = state !== 'idle' && state !== 'success' && state !== 'error';
@@ -152,8 +153,6 @@ export default function InputBar({
   }, [isBusy, onCameraResult, setState]);
 
   // Voice recording — real STT
-  const stopListeningRef = useRef<(() => void) | null>(null);
-
   const startRecording = useCallback(async () => {
     // 1. Check microphone permission first
     const hasPermission = await ensureSpeechPermission();
@@ -172,16 +171,16 @@ export default function InputBar({
     // 2. Start real speech recognition
     const cleanup = startListening(
       (text: string) => {
-        // Partial result — could update UI for live preview
+        // Partial result — store in ref for fallback
+        lastPartialRef.current = text;
       },
       (text: string) => {
-        // Final result — stop listening
+        // Final result — stop listening and use result
         stopPulse();
         Animated.spring(voiceBtnScale, { toValue: 1, useNativeDriver: true }).start();
         if (text && text.trim()) {
           const trimmed = text.trim();
           if (editableVoiceResult) {
-            // 填入文本框让用户编辑，再切换为文字模式
             setText(trimmed);
             voiceInputRef.current = trimmed;
             setInputMode('text');
@@ -201,7 +200,7 @@ export default function InputBar({
         setState('idle');
       },
     );
-    stopListeningRef.current = cleanup;
+    // No need to store cleanup — use exported stopListening() directly
   }, [startPulse, voiceBtnScale, setState, onVoiceResult]);
 
   const onPanResponderMove = useCallback(
@@ -221,18 +220,29 @@ export default function InputBar({
   const stopRecording = useCallback((_cancelling: boolean) => {
     stopPulse();
     Animated.spring(voiceBtnScale, { toValue: 1, useNativeDriver: true }).start();
-    // Stop real STT
-    if (stopListeningRef.current) {
-      stopListeningRef.current();
-      stopListeningRef.current = null;
-    }
+    // Stop real STT — use exported function (doesn't set cancelled, allows onend to fire)
+    stopListening();
+
     if (_cancelling) {
+      lastPartialRef.current = '';
       setState('idle');
     } else {
-      setState('transcribing');
-      // Real STT uses callbacks; no mock fallback needed
+      // Fallback: if onResult/onend didn't fire (rare), use partial text
+      const partial = lastPartialRef.current;
+      if (partial && partial.trim()) {
+        lastPartialRef.current = '';
+        if (editableVoiceResult) {
+          setText(partial.trim());
+          setInputMode('text');
+          setState('idle');
+        } else {
+          onVoiceResult(partial.trim());
+        }
+      } else {
+        setState('idle');
+      }
     }
-  }, [stopPulse, voiceBtnScale, setState]);
+  }, [stopPulse, voiceBtnScale, setState, onVoiceResult, editableVoiceResult]);
 
   const panResponder = useRef(
     PanResponder.create({
@@ -254,8 +264,6 @@ export default function InputBar({
     switch (state) {
       case 'listening':
         return '正在听你说……';
-      case 'transcribing':
-        return '识别中…';
       case 'capturing':
         return '拍照中…';
       case 'recognizing':
@@ -275,14 +283,12 @@ export default function InputBar({
     <View style={styles.wrapper}>
       {/* Status bar */}
       {(isListening ||
-        state === 'transcribing' ||
         state === 'thinking' ||
         state === 'executing' ||
         state === 'error') && (
         <View style={styles.statusBar}>
           <Text style={styles.statusText}>
             {isListening && '🎙 正在听你说……'}
-            {state === 'transcribing' && '📝 正在转文字……'}
             {state === 'thinking' && '🤔 AI 正在理解……'}
             {state === 'executing' && '⚡ 正在执行……'}
             {state === 'error' && '⚠ 出错了，请重试'}

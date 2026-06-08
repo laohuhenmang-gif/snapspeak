@@ -39,6 +39,26 @@ export default function TodayScreen() {
     });
   }, []);
 
+  // Auto-recover from stuck states (timeout safeguard)
+  const stateTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    const busyStates: InteractionState[] = ['listening', 'transcribing', 'capturing', 'recognizing', 'sending', 'thinking', 'executing'];
+    if (busyStates.includes(interactionState)) {
+      if (stateTimerRef.current) clearTimeout(stateTimerRef.current);
+      stateTimerRef.current = setTimeout(() => {
+        setInteractionState('idle');
+      }, 15000);
+    } else {
+      if (stateTimerRef.current) {
+        clearTimeout(stateTimerRef.current);
+        stateTimerRef.current = null;
+      }
+    }
+    return () => {
+      if (stateTimerRef.current) clearTimeout(stateTimerRef.current);
+    };
+  }, [interactionState]);
+
   // Load greeting and today's tasks on focus
   useFocusEffect(
     useCallback(() => {
