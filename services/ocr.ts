@@ -1,14 +1,23 @@
 import { getApiKey } from './ai-config';
+import { fetchWithTimeout } from './http-client';
 
 export interface OCRResult {
   text: string;
   confidence: number;
 }
 
-// DeepSeek chat models that support vision (deepseek-vl2 or deepseek-chat with vision capability)
+// DeepSeek chat models that support vision (deepseek-v4-flash with vision capability)
 const DEEPSEEK_API = 'https://api.deepseek.com/chat/completions';
 // Fallback to OpenAI-compatible API if DeepSeek fails
 const OPENAI_VISION_API = 'https://api.openai.com/v1/chat/completions';
+
+function detectMimeFromBase64(base64: string): string {
+  if (base64.startsWith('/9j/')) return 'image/jpeg';
+  if (base64.startsWith('iVBOR')) return 'image/png';
+  if (base64.startsWith('UklGR')) return 'image/webp';
+  // HEIC detection: raw bytes start with \x00\x00\x00... base64 'AAAA...' is ambiguous; fallback JPEG
+  return 'image/jpeg';
+}
 
 async function deepseekVisionOCR(imageBase64: string): Promise<OCRResult> {
   const apiKey = await getApiKey();
@@ -18,11 +27,11 @@ async function deepseekVisionOCR(imageBase64: string): Promise<OCRResult> {
 
   // Try DeepSeek first, fall back to direct text prompt if vision model unavailable
   try {
-    const res = await fetch(DEEPSEEK_API, {
+    const res = await fetchWithTimeout(DEEPSEEK_API, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
       body: JSON.stringify({
-        model: 'deepseek-chat',
+        model: 'deepseek-v4-flash',
         messages: [
           {
             role: 'system',
@@ -32,7 +41,7 @@ async function deepseekVisionOCR(imageBase64: string): Promise<OCRResult> {
             role: 'user',
             content: [
               { type: 'text', text: '请识别这张图片中的文字：' },
-              { type: 'image_url', image_url: { url: `data:image/jpeg;base64,${imageBase64}` } },
+              { type: 'image_url', image_url: { url: `data:${detectMimeFromBase64(imageBase64)};base64,${imageBase64}` } },
             ],
           },
         ],

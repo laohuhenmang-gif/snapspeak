@@ -1,21 +1,22 @@
 import { Task, AIParseResult, ReminderAction } from '../types';
-import { getApiKey, getModel } from './ai-config';
-import { AGENT_SYSTEM_PROMPT, AIAction, AIChatMessage, AIChatResponse } from './ai-types';
+import { getApiKey, getModel, getBaseUrl } from './ai-config';
+import { AGENT_SYSTEM_PROMPT, AIAction, AIChatMessage, AIChatResponse, AIError } from './ai-types';
 import { 
   loadConfirmedMemories, 
   loadBlockersByTask, 
   loadReflectionByDate,
 } from './storage';
+import { fetchWithRetry } from './http-client';
 
-const DEEPSEEK_BASE = 'https://api.deepseek.com';
-
-async function callDeepSeek(
+async function callAI(
   messages: { role: string; content: string }[],
   jsonMode = true,
 ): Promise<string> {
   const apiKey = await getApiKey();
-  if (!apiKey) throw new Error('请先在设置中配置 DeepSeek API Key');
+  if (!apiKey) throw new AIError('请先在设置中配置 API Key', 'api_key_missing');
   const model = await getModel();
+  const baseUrl = await getBaseUrl();
+  if (!baseUrl) throw new AIError('请先在设置中配置 API 地址', 'api_key_missing');
 
   const body: any = {
     model,
@@ -24,15 +25,32 @@ async function callDeepSeek(
     max_tokens: 2048,
   };
 
-  const res = await fetch(`${DEEPSEEK_BASE}/chat/completions`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
-    body: JSON.stringify(body),
-  });
+  const url = `${baseUrl.replace(/\/+$/, '')}/chat/completions`;
+
+  let res: Response;
+  try {
+    res = await fetchWithRetry(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
+      body: JSON.stringify(body),
+    });
+  } catch (e: any) {
+    if (e instanceof AIError) throw e;
+    throw new AIError(`网络连接失败: ${e?.message || '未知错误'}`, 'network');
+  }
 
   if (!res.ok) {
-    const errText = await res.text();
-    throw new Error(`DeepSeek API 错误 (${res.status}): ${errText}`);
+    const errText = await res.text().catch(() => '');
+    if (res.status === 401 || res.status === 403) {
+      throw new AIError('API Key 无效或未授权，请检查设置', 'api_key_missing');
+    }
+    if (res.status === 429) {
+      throw new AIError('API 请求过于频繁，请稍后重试', 'ai_service');
+    }
+    if (res.status >= 500) {
+      throw new AIError('AI 服务暂时不可用，请稍后重试', 'ai_service');
+    }
+    throw new AIError(`AI API 错误 (${res.status}): ${errText}`, 'ai_service');
   }
 
   const data = await res.json();
@@ -134,7 +152,7 @@ ${todayStr || '  今天没有待办任务'}
     content: m.content,
   }));
 
-  const result = await callDeepSeek([
+  const result = await callAI([
     { role: 'system', content: systemMsg },
     ...chatHistory,
     { role: 'user', content: userMessage },
@@ -154,7 +172,7 @@ ${todayStr || '  今天没有待办任务'}
 // --- 创建任务 ---
 export async function parseTask(userText: string): Promise<{ parsed: AIParseResult; rawTitle: string }> {
   const context = buildContext();
-  const result = await callDeepSeek([
+  const result = await callAI([
     { role: 'system', content: AGENT_SYSTEM_PROMPT + `\n\n用户想要创建一个任务。请以 JSON 格式返回以下字段（action="create"）：title, datetime, priority, recurring, category, notes。只返回纯 JSON 对象，不要用 \`\`\`json 包裹，不要输出任何解释文字。\n\n${context}` },
     { role: 'user', content: userText },
   ], true);
@@ -178,7 +196,7 @@ export async function parseTask(userText: string): Promise<{ parsed: AIParseResu
 // --- 修改任务 ---
 export async function editTask(task: Task, editCommand: string): Promise<{ changes: Partial<Task>; summary: string }> {
   const context = buildContext(`当前任务：${JSON.stringify(task)}`);
-  const result = await callDeepSeek([
+  const result = await callAI([
     { role: 'system', content: AGENT_SYSTEM_PROMPT + `\n\n用户想修改一个已有任务。返回纯 JSON：{"action":"edit","changes":{...},"summary":"确认语"}\n只能返回 changes 中实际需要修改的字段。不要用 \`\`\`json 包裹。\n\n${context}` },
     { role: 'user', content: editCommand },
   ], true);
@@ -200,7 +218,7 @@ export async function editTask(task: Task, editCommand: string): Promise<{ chang
 // --- 提醒响应 ---
 export async function handleReminderResponse(taskTitle: string, userResponse: string): Promise<ReminderAction> {
   const now = new Date().toISOString();
-  const result = await callDeepSeek([
+  const result = await callAI([
     { role: 'system', content: AGENT_SYSTEM_PROMPT + `\n\n用户收到任务提醒后做出回应。当前时间：${now}\n返回纯 JSON：{"action":"snooze|complete|reschedule|dismiss","snoozeMinutes":number|null,"newDatetime":"ISO|null","message":"确认语"}。不要用 \`\`\`json 包裹。` },
     { role: 'user', content: `任务：${taskTitle}\n用户回应：${userResponse}` },
   ], true);
@@ -234,7 +252,7 @@ export async function generateBriefing(tasks: Task[]): Promise<string> {
       }
     } catch {}
 
-    const result = await callDeepSeek([
+    const result = await callAI([
       { role: 'system', content: `你是一个贴心的每日简报助手。以"${greeting}"开头，生成 1-3 句中文问候，简洁温暖，指出最重要的任务。不要 JSON。${extraContext}` },
       { role: 'user', content: `今天的待办任务：\n${taskSummary}` },
     ], false);
@@ -246,7 +264,7 @@ export async function generateBriefing(tasks: Task[]): Promise<string> {
 
 // --- OCR 增强 ---
 export async function ocrEnhance(rawText: string): Promise<{ cleaned: string; tasks: AIParseResult[] }> {
-  const result = await callDeepSeek([
+  const result = await callAI([
     { role: 'system', content: `你是 OCR 文本清洗和任务提取助手。
 清洗OCR文本，修正错别字，提取所有待办事项。
 返回纯 JSON：{"cleaned":"清洗后文本","tasks":[{"title":"...","datetime":"...或null","priority":"高/中/低","category":"..."}]}。不要用 \`\`\`json 包裹。` },
@@ -273,7 +291,7 @@ export async function ocrEnhance(rawText: string): Promise<{ cleaned: string; ta
 export async function suggestTasks(taskHistory: Task[]): Promise<string> {
   if (taskHistory.length < 3) return '';
   try {
-    return await callDeepSeek([
+    return await callAI([
       { role: 'system', content: `分析用户的任务历史，给出 1 条智能建议。如果发现规律性任务（如每周周报），建议自动创建。1-2 句话，不要 JSON。` },
       { role: 'user', content: `近期任务：${JSON.stringify(taskHistory.slice(-20))}` },
     ], false);
@@ -283,7 +301,7 @@ export async function suggestTasks(taskHistory: Task[]): Promise<string> {
 // --- 多意图处理 ---
 export async function multiIntent(text: string): Promise<AIAction[]> {
   const context = buildContext();
-  const result = await callDeepSeek([
+  const result = await callAI([
     { role: 'system', content: AGENT_SYSTEM_PROMPT + `\n\n用户的一句话可能包含多个操作。解析为 actions 数组。返回纯 JSON：{"actions":[...]}。不要用 \`\`\`json 包裹，不要输出任何解释文字。\n\n${context}` },
     { role: 'user', content: text },
   ], true);
@@ -311,7 +329,7 @@ export async function generateDailyReview(
       `  [${t.completed ? '✅' : '⬜'}] ${t.title}${t.current_blocker_reason ? ' (原因：' + t.current_blocker_reason + ')' : ''}`
     ).join('\n');
 
-    const result = await callDeepSeek([
+    const result = await callAI([
       { role: 'system', content: `你是一个贴心的每日工作复盘助手。今天是 ${todayStr}。
 
 生成简短的中文复盘，包含：

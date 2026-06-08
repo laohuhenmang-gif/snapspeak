@@ -1,5 +1,6 @@
 import { View, Text, Image, TouchableOpacity, StyleSheet } from 'react-native';
 import { COLORS } from '../constants';
+import PixelAvatar from './PixelAvatar';
 
 // Unified message type for the chat stream
 export type MessageRole = 'user' | 'assistant' | 'system';
@@ -49,9 +50,7 @@ export default function ChatBubble({ message, onCardAction, onRetry }: ChatBubbl
     <View style={[styles.row, isUser ? styles.rowUser : styles.rowAssistant]}>
       {/* Avatar for non-user messages */}
       {!isUser && (
-        <View style={styles.avatarSmall}>
-          <Text style={styles.avatarText}>🤖</Text>
-        </View>
+        <PixelAvatar size={28} />
       )}
 
       <View style={[styles.bubble, isUser ? styles.bubbleUser : styles.bubbleAI, isError && styles.bubbleError]}>
@@ -192,49 +191,41 @@ const styles = StyleSheet.create({
   },
   rowUser: { justifyContent: 'flex-end' },
   rowAssistant: { justifyContent: 'flex-start' },
-  avatarSmall: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: COLORS.primaryLight,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  avatarText: { fontSize: 14 },
   bubble: {
     maxWidth: '78%',
     padding: 14,
-    borderRadius: 18,
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.12,
+    shadowRadius: 4,
   },
   bubbleUser: {
-    backgroundColor: COLORS.chatBubbleUser,
-    borderBottomRightRadius: 4,
+    backgroundColor: '#000',
   },
   bubbleAI: {
-    backgroundColor: COLORS.chatBubbleAI,
-    borderBottomLeftRadius: 4,
+    backgroundColor: '#F0F0F0',
   },
   bubbleError: {
-    backgroundColor: '#FFF0F0',
-    borderWidth: 1,
-    borderColor: '#FFCCCC',
+    backgroundColor: '#FFF',
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.12,
+    shadowRadius: 4,
   },
-  text: { fontSize: 15, lineHeight: 22 },
-  textUser: { color: COLORS.chatBubbleUserText },
-  textAI: { color: COLORS.chatBubbleAIText },
+  text: { fontSize: 15, lineHeight: 22, fontFamily: 'monospace' },
+  textUser: { color: '#FFF' },
+  textAI: { color: '#000' },
   image: {
     width: 200,
     height: 200,
-    borderRadius: 12,
     marginBottom: 6,
   },
-  imageCaption: { fontSize: 13, marginTop: 4 },
+  imageCaption: { fontSize: 13, fontFamily: 'monospace', marginTop: 4 },
   card: {
-    backgroundColor: COLORS.card,
-    borderRadius: 12,
+    backgroundColor: '#F5F5F5',
     padding: 12,
-    borderWidth: 1,
-    borderColor: COLORS.border,
   },
   cardTitle: {
     fontSize: 14,
@@ -269,29 +260,33 @@ const styles = StyleSheet.create({
   actionBtn: {
     paddingHorizontal: 14,
     paddingVertical: 7,
-    borderRadius: 16,
-    backgroundColor: COLORS.inputBg,
+    backgroundColor: '#E0E0E0',
   },
-  actionBtnPrimary: { backgroundColor: COLORS.primary },
-  actionBtnSecondary: { backgroundColor: COLORS.primaryLight },
-  actionBtnDanger: { backgroundColor: '#FFEEEE' },
+  actionBtnPrimary: { backgroundColor: '#000' },
+  actionBtnSecondary: { backgroundColor: '#CCC' },
+  actionBtnDanger: { backgroundColor: '#FFF' },
   actionText: {
     fontSize: 13,
     fontFamily: 'monospace',
     color: COLORS.text,
+    fontWeight: '700',
   },
-  actionTextPrimary: { color: '#FFFFFF', fontWeight: '600' },
-  actionTextDanger: { color: '#CC3333' },
+  actionTextPrimary: { color: '#FFF' },
+  actionTextDanger: { color: '#000' },
   retryBtn: {
     marginTop: 8,
     alignSelf: 'flex-start',
     paddingHorizontal: 12,
     paddingVertical: 4,
-    borderRadius: 10,
-    backgroundColor: '#FFCCCC',
+    backgroundColor: '#FFF',
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
   },
-  retryText: { fontSize: 12, color: '#CC3333', fontFamily: 'monospace' },
-  timestamp: { fontSize: 10, marginTop: 4 },
-  timestampUser: { color: COLORS.chatBubbleUserText + '88', textAlign: 'right' },
-  timestampAI: { color: COLORS.chatBubbleAIText + '88' },
+  retryText: { fontSize: 12, color: '#000', fontFamily: 'monospace', fontWeight: '700' },
+  timestamp: { fontSize: 10, fontFamily: 'monospace', marginTop: 4, opacity: 0.5 },
+  timestampUser: { textAlign: 'right' },
+  timestampAI: {},
 });

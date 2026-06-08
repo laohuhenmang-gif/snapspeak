@@ -61,9 +61,11 @@ export function startListening(
   onPartial: (text: string) => void,
   onResult: (text: string) => void,
   onError: (error: string) => void,
+  timeoutMs = 8000,
 ): () => void {
   let cancelled = false;
   let accumulatedText = '';
+  let timedOut = false;
 
   // Create a new recognizer instance
   recognizer = new ExpoWebSpeechRecognition();
@@ -72,8 +74,23 @@ export function startListening(
   recognizer.maxAlternatives = 1;
   recognizer.requiresOnDeviceRecognition = false;
 
-  recognizer.onresult = (event: ExpoSpeechRecognitionResultEvent) => {
+  // Timeout safeguard: if no result within timeoutMs, report timeout
+  const timeoutId = setTimeout(() => {
     if (cancelled) return;
+    timedOut = true;
+    try {
+      recognizer?.stop();
+    } catch {}
+    onError('语音识别超时，请重试');
+  }, timeoutMs);
+
+  const clearTimeoutGuard = () => {
+    clearTimeout(timeoutId);
+  };
+
+  recognizer.onresult = (event: ExpoSpeechRecognitionResultEvent) => {
+    if (cancelled || timedOut) return;
+    clearTimeoutGuard();
 
     const transcript = event.results
       .map((r) => r.transcript)
@@ -97,7 +114,8 @@ export function startListening(
   };
 
   recognizer.onerror = (event: ExpoSpeechRecognitionErrorEvent) => {
-    if (cancelled) return;
+    if (cancelled || timedOut) return;
+    clearTimeoutGuard();
 
     switch (event.error) {
       case 'no-speech':
@@ -121,11 +139,12 @@ export function startListening(
   };
 
   recognizer.onend = () => {
+    if (cancelled || timedOut) return;
+    clearTimeoutGuard();
+
     // If we have accumulated text but no final result came through,
     // treat the accumulated text as the result
-    if (!cancelled && accumulatedText.trim().length > 0) {
-      // If onresult with isFinal already fired, this is a no-op because
-      // accumulatedText would have been cleared; but as a safety net:
+    if (accumulatedText.trim().length > 0) {
       onResult(accumulatedText.trim());
     }
   };
@@ -133,11 +152,13 @@ export function startListening(
   try {
     recognizer.start();
   } catch (e: any) {
+    clearTimeoutGuard();
     onError(`启动语音识别失败: ${e?.message || '未知错误'}`);
   }
 
   return () => {
     cancelled = true;
+    clearTimeoutGuard();
     try {
       recognizer?.stop();
     } catch {

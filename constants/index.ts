@@ -61,6 +61,14 @@ export const CATEGORY_COLORS: Record<string, string> = {
 export const CATEGORY_LABELS = ['工作', '学习', '健康', '生活', '其他'] as const;
 
 export const DEEPSEEK_MODELS = [
-  { id: 'deepseek-chat', label: 'V3 Chat (文本+图片)' },
-  { id: 'deepseek-reasoner', label: 'V3 Reasoner (推理)' },
+  { id: 'deepseek-chat', label: 'DeepSeek Chat' },
+  { id: 'deepseek-reasoner', label: 'DeepSeek Reasoner' },
+  { id: 'deepseek-v4-flash', label: 'DeepSeek V4 Flash' },
+  { id: 'deepseek-v4-pro', label: 'DeepSeek V4 Pro' },
+] as const;
+
+export const AI_PROVIDERS = [
+  { id: 'deepseek', label: 'DeepSeek' },
+  { id: 'openai', label: 'OpenAI 兼容' },
+  { id: 'custom', label: '自定义' },
 ] as const;

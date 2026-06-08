@@ -58,7 +58,9 @@
       ],
       "expo-font",
       "expo-asset",
-      "expo-speech-recognition"
+      "expo-speech-recognition",
+      "expo-secure-store",
+      "expo-sharing"
     ],
     "extra": {
       "router": {},

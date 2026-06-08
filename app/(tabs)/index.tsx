@@ -5,10 +5,10 @@ import * as FileSystem from 'expo-file-system';
 import { Task, AIParseResult } from '../../types';
 import { loadTasks, addTask, updateTask, deleteTask, toggleComplete, findTaskByTitle, batchComplete, saveCapture, saveReminder, saveMemory, saveReflection, saveBlocker, loadReflectionByDate } from '../../services/storage';
 import { scheduleTaskReminder } from '../../services/notification';
-import { multiIntent, generateBriefing } from '../../services/ai';
+import { multiIntent, generateBriefing, generateDailyReview } from '../../services/ai';
 import { getApiKey } from '../../services/ai-config';
 import { useTheme } from '../../services/theme-context';
-import { AIAction } from '../../services/ai-types';
+import { AIAction, AIError } from '../../services/ai-types';
 import { recognizeText } from '../../services/ocr';
 import {
   InteractionState,
@@ -18,6 +18,8 @@ import {
 import Toast, { toast } from '../../components/Toast';
 import InputBar from '../../components/InputBar';
 import ChatBubble, { ChatMessage, generateId } from '../../components/ChatBubble';
+import PixelAvatar from '../../components/PixelAvatar';
+import { startNetworkMonitor, stopNetworkMonitor, checkNetwork } from '../../services/network';
 
 export default function TodayScreen() {
   const router = useRouter();
@@ -25,18 +27,27 @@ export default function TodayScreen() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [interactionState, setInteractionState] = useState<InteractionState>('idle');
   const [noKey, setNoKey] = useState(false);
+  const [isOffline, setIsOffline] = useState(false);
   const flatListRef = useRef<FlatList<ChatMessage>>(null);
 
   const scrollToBottom = useCallback(() => {
     setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 100);
   }, []);
 
-  // Check API key on mount
+  // Check API key + network on mount
   useEffect(() => {
     getApiKey().then((k) => setNoKey(!k));
+    checkNetwork().then((online) => setIsOffline(!online));
+    startNetworkMonitor((connected) => {
+      if (!connected && !isOffline) {
+        toast('网络已断开，部分功能可能不可用', 'warn');
+      }
+      setIsOffline(!connected);
+    });
     AppState.addEventListener('change', (s) => {
       if (s === 'active') getApiKey().then((k) => setNoKey(!k));
     });
+    return () => stopNetworkMonitor();
   }, []);
 
   // Auto-recover from stuck states (timeout safeguard)
@@ -172,6 +183,53 @@ export default function TodayScreen() {
       // 复盘加载失败不阻塞
     }
 
+    // Auto-push: evening daily review (after 6pm)
+    try {
+      const currentHour = new Date().getHours();
+      if (currentHour >= 18) {
+        const todayTasksForReview = all.filter(t => t.datetime.startsWith(today));
+        const completedToday = todayTasksForReview.filter(t => t.completed).length;
+        if (todayTasksForReview.length > 0 && completedToday > 0) {
+          const existingReflection = await loadReflectionByDate(today).catch(() => null);
+          if (!existingReflection) {
+            const review = await generateDailyReview(all, today);
+            const reviewMsg: ChatMessage = {
+              id: generateId(),
+              role: 'assistant',
+              kind: 'card',
+              content: `📊 今日回顾：完成 ${review.completion_rate}%`,
+              cardData: {
+                title: '📊 今日自动回顾',
+                items: [
+                  { label: '完成率', value: `${review.completion_rate}%` },
+                  { label: '总结', value: review.ai_summary },
+                  { label: '建议', value: review.ai_suggestion },
+                ],
+                actions: [
+                  { label: '知道了', key: 'dismiss', style: 'secondary' },
+                ],
+              },
+              timestamp: Date.now(),
+            };
+            msgs.push(reviewMsg);
+            // Save the review
+            await saveReflection({
+              date: today,
+              planned_count: todayTasksForReview.length,
+              completed_count: completedToday,
+              completion_rate: review.completion_rate,
+              overdue_count: todayTasksForReview.filter(t => !t.completed).length,
+              main_blockers_json: JSON.stringify([]),
+              ai_summary: review.ai_summary,
+              ai_suggestion: review.ai_suggestion,
+            });
+          }
+        }
+      }
+    } catch {
+      // Evening review failure not blocking
+    }
+
     // P1-2: 主动问原因 — 检查逾期未完成的任务
     try {
       const now = new Date().toISOString();
@@ -302,13 +360,14 @@ export default function TodayScreen() {
 
         setInteractionState('action_pending');
       } catch (e: any) {
+        const errorType = e instanceof AIError ? e.errorType : 'network';
         const errMsg: ChatMessage = {
           id: generateId(),
           role: 'system',
           kind: 'error',
-          content: getErrorMessage('network', e.message || ''),
+          content: getErrorMessage(errorType, e.message || ''),
           timestamp: Date.now(),
-          errorRetryable: true,
+          errorRetryable: errorType !== 'api_key_missing',
         };
         setMessages((prev) => [...prev, errMsg]);
         setInteractionState('error');
@@ -405,13 +464,14 @@ export default function TodayScreen() {
         setMessages((prev) => [...prev, cardMsg]);
         setInteractionState('action_pending');
       } catch (e: any) {
+        const errorType = e instanceof AIError ? e.errorType : 'ocr';
         const errMsg: ChatMessage = {
           id: generateId(),
           role: 'system',
           kind: 'error',
-          content: getErrorMessage('ocr', e.message || ''),
+          content: getErrorMessage(errorType, e.message || ''),
           timestamp: Date.now(),
-          errorRetryable: true,
+          errorRetryable: errorType !== 'api_key_missing',
         };
         setMessages((prev) => [...prev, errMsg]);
         setInteractionState('error');
@@ -609,6 +669,27 @@ export default function TodayScreen() {
       case 'complete': {
         if (act.taskId) {
           await toggleComplete(act.taskId);
+          // Check if all today's tasks are done — auto-push congratulations
+          try {
+            const all = await loadTasks();
+            const today = new Date().toISOString().slice(0, 10);
+            const todayTasks = all.filter((t: Task) => t.datetime.startsWith(today));
+            const remaining = todayTasks.filter((t: Task) => !t.completed);
+            if (todayTasks.length > 0 && remaining.length === 0) {
+              const currentHour = new Date().getHours();
+              const greeting = currentHour < 12 ? '上午' : currentHour < 18 ? '下午' : '晚上';
+              setMessages((prev) => [
+                ...prev,
+                {
+                  id: generateId(),
+                  role: 'assistant',
+                  kind: 'text',
+                  content: `🎉 ${greeting}的任务都完成了！今天完成了 ${todayTasks.length} 件事。`,
+                  timestamp: Date.now(),
+                },
+              ]);
+            }
+          } catch {}
         } else if (act.filter === 'today') {
           const done = await batchComplete('today');
           act.summary = `完成了今天的 ${done} 个任务`;
@@ -889,14 +970,17 @@ export default function TodayScreen() {
   return (
     <KeyboardAvoidingView
       style={[styles.container, { backgroundColor: theme.bg }]}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'padding'}
       keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
     >
       {/* Header */}
       <View style={styles.header}>
-        <Text style={[styles.headerTitle, { color: theme.text }]}>语拍提醒 · AI 助理</Text>
-        <Text style={[styles.headerStatus, { color: noKey ? theme.danger : theme.success }]}>
-          {noKey ? '⚠️ API 未配置' : '● 在线'}
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+          <PixelAvatar size={24} />
+          <Text style={[styles.headerTitle, { color: theme.text }]}>语拍提醒</Text>
+        </View>
+        <Text style={[styles.headerStatus, { color: noKey ? theme.danger : isOffline ? theme.warning : theme.success }]}>
+          {noKey ? 'API 未配置' : isOffline ? '离线' : '在线'}
         </Text>
       </View>
 
@@ -920,6 +1004,7 @@ export default function TodayScreen() {
             </Text>
           </View>
         }
+        keyboardShouldPersistTaps="handled"
         onLayout={scrollToBottom}
       />
 
@@ -1229,8 +1314,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#E0E0E0',
+    backgroundColor: '#F8F8F8',
   },
   headerTitle: {
     fontSize: 18,
@@ -1239,7 +1323,7 @@ const styles = StyleSheet.create({
   },
   headerStatus: {
     fontSize: 12,
-    fontWeight: '600',
+    fontWeight: '700',
     fontFamily: 'monospace',
   },
   messageList: {
@@ -1254,11 +1338,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingTop: 100,
   },
-  emptyText: { fontSize: 15, fontWeight: '500', fontFamily: 'monospace' },
+  emptyText: { fontSize: 15, fontWeight: '700', fontFamily: 'monospace' },
   stateBar: {
     paddingVertical: 6,
     paddingHorizontal: 16,
     alignItems: 'center',
+    backgroundColor: '#F0F0F0',
   },
-  stateText: { fontSize: 12, fontWeight: '500', fontFamily: 'monospace' },
+  stateText: { fontSize: 12, fontWeight: '700', fontFamily: 'monospace' },
 });

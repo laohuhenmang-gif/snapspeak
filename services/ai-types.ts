@@ -37,6 +37,18 @@ export interface AIChatResponse {
   actions?: AIAction[];
 }
 
+import { ErrorType } from '../constants/interaction';
+
+export class AIError extends Error {
+  constructor(
+    message: string,
+    public errorType: ErrorType = 'ai_service',
+  ) {
+    super(message);
+    this.name = 'AIError';
+  }
+}
+
 export const AGENT_SYSTEM_PROMPT = `你是「语拍提醒」(SnapSpeak)，用户的个人 AI 工作助理。
 
 ## 角色定位

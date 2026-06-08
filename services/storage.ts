@@ -462,6 +462,28 @@ export async function loadConfirmedMemories(): Promise<any[]> {
   return getDb().getAllSync('SELECT * FROM memories WHERE user_confirmed = 1 AND enabled = 1 ORDER BY updated_at DESC');
 }
 
+export async function loadAllMemories(): Promise<any[]> {
+  return getDb().getAllSync('SELECT * FROM memories ORDER BY updated_at DESC');
+}
+
+export async function updateMemory(id: string, updates: { content?: string; memory_type?: string; user_confirmed?: boolean; enabled?: boolean }): Promise<void> {
+  const fields: string[] = [];
+  const values: any[] = [];
+  if (updates.content !== undefined) { fields.push('content = ?'); values.push(updates.content); }
+  if (updates.memory_type !== undefined) { fields.push('memory_type = ?'); values.push(updates.memory_type); }
+  if (updates.user_confirmed !== undefined) { fields.push('user_confirmed = ?'); values.push(updates.user_confirmed ? 1 : 0); }
+  if (updates.enabled !== undefined) { fields.push('enabled = ?'); values.push(updates.enabled ? 1 : 0); }
+  if (fields.length === 0) return;
+  fields.push('updated_at = ?');
+  values.push(nowISO());
+  values.push(id);
+  getDb().runSync(`UPDATE memories SET ${fields.join(', ')} WHERE id = ?`, values);
+}
+
+export async function deleteMemory(id: string): Promise<void> {
+  getDb().runSync('DELETE FROM memories WHERE id = ?', [id]);
+}
+
 // ──────────────────────────────────────
 // Reflections
 // ──────────────────────────────────────
@@ -511,4 +533,80 @@ export async function saveBlocker(blocker: {
 
 export async function loadBlockersByTask(task_id: string): Promise<any[]> {
   return getDb().getAllSync('SELECT * FROM blockers WHERE task_id = ? ORDER BY created_at DESC', [task_id]);
+}
+
+// ──────────────────────────────────────
+// Export / Import
+// ──────────────────────────────────────
+
+export interface ExportData {
+  version: string;
+  exported_at: string;
+  tasks: any[];
+  captures: any[];
+  reminders: any[];
+  ai_actions: any[];
+  memories: any[];
+  reflections: any[];
+  blockers: any[];
+  conversations: any[];
+}
+
+export async function exportAllData(): Promise<ExportData> {
+  const db = getDb();
+  const tables = ['tasks', 'captures', 'reminders', 'ai_actions', 'memories', 'reflections', 'blockers', 'conversations'];
+  const data: ExportData = {
+    version: '1.0',
+    exported_at: nowISO(),
+    tasks: [],
+    captures: [],
+    reminders: [],
+    ai_actions: [],
+    memories: [],
+    reflections: [],
+    blockers: [],
+    conversations: [],
+  };
+  for (const table of tables) {
+    try {
+      (data as any)[table] = db.getAllSync(`SELECT * FROM ${table}`);
+    } catch {
+      // Table may not exist yet — skip
+    }
+  }
+  return data;
+}
+
+export async function importAllData(data: ExportData): Promise<{ imported: number; errors: string[] }> {
+  const db = getDb();
+  const errors: string[] = [];
+  let imported = 0;
+
+  const tables = ['tasks', 'captures', 'reminders', 'ai_actions', 'memories', 'reflections', 'blockers', 'conversations'];
+
+  // Clear existing data
+  for (const table of tables) {
+    try {
+      db.runSync(`DELETE FROM ${table}`);
+    } catch {}
+  }
+
+  // Import each table
+  for (const table of tables) {
+    const rows = (data as any)[table];
+    if (!Array.isArray(rows) || rows.length === 0) continue;
+    for (const row of rows) {
+      try {
+        const columns = Object.keys(row);
+        const placeholders = columns.map(() => '?').join(', ');
+        const values = columns.map((col) => (row[col] === undefined ? null : row[col]));
+        db.runSync(`INSERT INTO ${table} (${columns.join(', ')}) VALUES (${placeholders})`, values);
+        imported++;
+      } catch (e: any) {
+        errors.push(`${table}: ${e?.message || 'unknown'}`);
+      }
+    }
+  }
+
+  return { imported, errors };
 }
