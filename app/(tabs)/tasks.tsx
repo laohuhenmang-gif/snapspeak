@@ -5,14 +5,12 @@ import { loadTasks, toggleComplete } from '../../services/storage';
 import { useTheme } from '../../services/theme-context';
 import { CATEGORY_COLORS, CATEGORY_LABELS } from '../../constants';
 import TaskCard from '../../components/TaskCard';
-import ChatSheet from '../../components/ChatSheet';
 
 export default function TasksScreen() {
   const { theme } = useTheme();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [filter, setFilter] = useState<Category | 'all'>('all');
   const [tab, setTab] = useState<'active' | 'completed'>('active');
-  const [chatTask, setChatTask] = useState<Task | null>(null);
 
   const refresh = useCallback(async () => { setTasks(await loadTasks()); }, []);
 
@@ -71,7 +69,7 @@ export default function TasksScreen() {
         keyExtractor={item => item.id}
         renderItem={({ item }) => (
           tab === 'active' ? (
-            <TaskCard task={item} onToggle={handleToggle} onTap={(t) => setChatTask(t)} />
+            <TaskCard task={item} onToggle={handleToggle} onTap={() => {}} />
           ) : (
             <View style={[styles.completedRow, { backgroundColor: theme.card }]}>
               <Text style={styles.completedCheck}>✓</Text>
@@ -92,8 +90,6 @@ export default function TasksScreen() {
           </View>
         }
       />
-
-      <ChatSheet visible={!!chatTask} task={chatTask} onClose={() => { setChatTask(null); refresh(); }} />
     </View>
   );
 }

@@ -19,7 +19,7 @@ const DM_KEY = '@snapspeak_dark_mode';
 
 const ThemeContext = createContext<ThemeContextType>({
   theme: themes[0].colors,
-  themeId: 'doubao',
+  themeId: 'pixel',
   setTheme: async () => {},
   darkMode: 'system',
   setDarkMode: async () => {},
@@ -35,9 +35,9 @@ function resolveThemeId(baseId: string, darkMode: DarkMode, systemIsDark: boolea
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const systemColorScheme = useColorScheme();
   const systemIsDark = systemColorScheme === 'dark';
-  const [baseThemeId, setBaseThemeId] = useState('doubao');
+  const [baseThemeId, setBaseThemeId] = useState('pixel');
   const [darkMode, setDarkModeState] = useState<DarkMode>('system');
-  const [resolvedId, setResolvedId] = useState('doubao');
+  const [resolvedId, setResolvedId] = useState('pixel');
   const [theme, setThemeColors] = useState<ThemeColors>(themes[0].colors);
 
   useEffect(() => {

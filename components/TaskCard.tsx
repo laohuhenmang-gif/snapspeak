@@ -1,77 +1,82 @@
-import { View, Text, TouchableOpacity, StyleSheet, Alert, Animated } from 'react-native';
-import { useRouter } from 'expo-router';
-import { useRef } from 'react';
-import { COLORS } from '../constants';
-import { Task } from '../types';
-import { deleteTask } from '../services/storage';
+import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { Task, Category } from '../types';
+import { useTheme } from '../services/theme-context';
+import { CATEGORY_COLORS, CATEGORY_LABELS } from '../constants';
 
 interface TaskCardProps {
   task: Task;
   onToggle: (id: string) => void;
-  onLongPress?: (task: Task) => void;
   onTap?: (task: Task) => void;
 }
 
-export default function TaskCard({ task, onToggle, onLongPress, onTap }: TaskCardProps) {
-  const router = useRouter();
-  const priorityIcon = task.priority === '高' ? '!!' : task.priority === '低' ? '--' : '··';
-  const time = task.datetime ? task.datetime.slice(11, 16) : '';
+export default function TaskCard({ task, onToggle, onTap }: TaskCardProps) {
+  const { theme } = useTheme();
 
-  const handleLongPress = () => {
-    Alert.alert(
-      task.title,
-      undefined,
-      [
-        { text: '编辑', onPress: () => router.push({ pathname: `/task-edit/${task.id}` }) },
-        { text: '删除', style: 'destructive', onPress: () => {
-          Alert.alert('确认删除', `删除「${task.title}」？`, [
-            { text: '取消', style: 'cancel' },
-            { text: '删除', style: 'destructive', onPress: async () => {
-              await deleteTask(task.id);
-              onLongPress?.(task);
-            }},
-          ]);
-        }},
-        { text: '取消', style: 'cancel' },
-      ],
-    );
+  const formatDateTime = (iso: string) => {
+    const d = new Date(iso);
+    const month = d.getMonth() + 1;
+    const day = d.getDate();
+    const hours = d.getHours().toString().padStart(2, '0');
+    const mins = d.getMinutes().toString().padStart(2, '0');
+    return `${month}月${day}日 ${hours}:${mins}`;
   };
+
+  const priorityColor = task.priority === '高' ? '#FF4757' : task.priority === '中' ? '#FFA502' : '#2ED573';
 
   return (
     <TouchableOpacity
-      style={[styles.card, task.completed && styles.completed]}
-      onPress={() => {
-        if (onTap) onTap(task);
-        else router.push({ pathname: `/task-edit/${task.id}` });
-      }}
-      onLongPress={handleLongPress}
-      activeOpacity={0.8}
+      style={[styles.card, { backgroundColor: theme.card }]}
+      onPress={() => onTap?.(task)}
+      activeOpacity={0.7}
     >
-      <Text style={styles.priorityIcon}>{priorityIcon}</Text>
-      {time ? <Text style={[styles.time, task.completed && styles.dim]}>{time}</Text> : null}
-      <Text style={[styles.title, task.completed && styles.lineThrough]} numberOfLines={1}>
-        {task.title}
-      </Text>
-      {task.recurring !== 'none' && (
-        <Text style={styles.recurring}>{'>'}{'>'}</Text>
-      )}
+      <TouchableOpacity style={styles.checkArea} onPress={() => onToggle(task.id)}>
+        <View style={[styles.checkbox, { borderColor: theme.textMuted }]}>
+          {task.completed && <Text style={styles.checkmark}>✓</Text>}
+        </View>
+      </TouchableOpacity>
+
+      <View style={styles.content}>
+        <Text style={[styles.title, { color: theme.text }]} numberOfLines={2}>{task.title}</Text>
+        <Text style={[styles.datetime, { color: theme.textMuted }]}>{formatDateTime(task.datetime)}</Text>
+        <View style={styles.tags}>
+          <View style={[styles.badge, { backgroundColor: CATEGORY_COLORS[task.category as Category] || theme.primary }]}>
+            <Text style={styles.badgeText}>{task.category}</Text>
+          </View>
+          <View style={[styles.priorityBadge, { backgroundColor: priorityColor + '20' }]}>
+            <Text style={[styles.priorityText, { color: priorityColor }]}>{task.priority}</Text>
+          </View>
+          {task.needs_precheck && (
+            <View style={[styles.badge, { backgroundColor: '#FF6B81' }]}>
+              <Text style={styles.badgeText}>需前置准备</Text>
+            </View>
+          )}
+        </View>
+      </View>
     </TouchableOpacity>
   );
 }
 
 const styles = StyleSheet.create({
   card: {
-    flexDirection: 'row', alignItems: 'center',
-    paddingVertical: 12, paddingHorizontal: 14,
-    marginHorizontal: 12, marginVertical: 2,
-    backgroundColor: COLORS.card,
-    borderWidth: 2, borderColor: COLORS.border,
+    flexDirection: 'row',
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    marginHorizontal: 16,
+    marginVertical: 3,
+    borderRadius: 16,
   },
-  completed: { opacity: 0.5 },
-  priorityIcon: { fontSize: 12, width: 22, textAlign: 'center', color: COLORS.text, fontFamily: 'monospace' },
-  time: { fontSize: 13, fontWeight: '700', color: COLORS.text, width: 48, fontVariant: ['tabular-nums'] },
-  dim: { color: COLORS.textLight },
-  title: { flex: 1, fontSize: 14, color: COLORS.text, marginLeft: 8 },
-  lineThrough: { textDecorationLine: 'line-through', color: COLORS.textLight },
-  recurring: { fontSize: 12, color: COLORS.text, marginLeft: 4, fontFamily: 'monospace' },
+  checkArea: { justifyContent: 'center', marginRight: 14 },
+  checkbox: {
+    width: 22, height: 22, borderRadius: 11,
+    borderWidth: 2, justifyContent: 'center', alignItems: 'center',
+  },
+  checkmark: { fontSize: 12, fontWeight: '700', color: '#2ED573' },
+  content: { flex: 1 },
+  title: { fontSize: 15, fontWeight: '600', marginBottom: 4 },
+  datetime: { fontSize: 12, marginBottom: 6 },
+  tags: { flexDirection: 'row', gap: 6, flexWrap: 'wrap' },
+  badge: { paddingHorizontal: 10, paddingVertical: 3, borderRadius: 10 },
+  badgeText: { color: '#fff', fontSize: 11, fontWeight: '600' },
+  priorityBadge: { paddingHorizontal: 10, paddingVertical: 3, borderRadius: 10 },
+  priorityText: { fontSize: 11, fontWeight: '600' },
 });
