@@ -1,0 +1,11 @@
+{
+  "identifier": "default",
+  "description": "Permissions for core, notification, dialog",
+  "windows": ["main"],
+  "permissions": [
+    "core:default",
+    "notification:default",
+    "dialog:default",
+    "dialog:allow-save"
+  ]
+}

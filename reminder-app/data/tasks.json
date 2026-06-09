@@ -1,0 +1,54 @@
+[
+  {
+    "id": "test-001",
+    "title": "开发人员招聘储备",
+    "description": "先面试，储备人员，后续再进人",
+    "datetime": "2026-06-05T09:00:00",
+    "priority": "高",
+    "category_id": "cat-001",
+    "tags": ["人事", "招聘"],
+    "recurring": "none",
+    "recurring_end": null,
+    "completed": false,
+    "created_at": "2026-06-05T08:00:00"
+  },
+  {
+    "id": "test-002",
+    "title": "11月份活动 - 与唐主任前期沟通",
+    "description": "尚未跟领导汇报，待征集意见后，再行汇报",
+    "datetime": "2026-06-05T10:00:00",
+    "priority": "高",
+    "category_id": "cat-001",
+    "tags": ["活动", "沟通"],
+    "recurring": "none",
+    "recurring_end": null,
+    "completed": false,
+    "created_at": "2026-06-05T08:00:00"
+  },
+  {
+    "id": "test-003",
+    "title": "调研 - 世纪城对面时光里演绎吧",
+    "description": "邀请刘总和董事长，刘总负责通知，周一或周二晚去看",
+    "datetime": "2026-06-08T19:00:00",
+    "priority": "中",
+    "category_id": "cat-001",
+    "tags": ["调研", "外出"],
+    "recurring": "none",
+    "recurring_end": null,
+    "completed": false,
+    "created_at": "2026-06-05T08:00:00"
+  },
+  {
+    "id": "test-004",
+    "title": "园区接管 - 协议准备与跟进",
+    "description": "待10天后明确后续做法。协议先写，等最终明确后再抛出。郎酒先研究，政府再上会，等政府最终意见",
+    "datetime": "2026-06-15T09:00:00",
+    "priority": "高",
+    "category_id": "cat-001",
+    "tags": ["园区", "协议"],
+    "recurring": "none",
+    "recurring_end": null,
+    "completed": false,
+    "created_at": "2026-06-05T08:00:00"
+  }
+]

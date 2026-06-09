@@ -1,0 +1,6 @@
+[
+  { "id": "cat-001", "name": "工作", "color": "#4A90D9" },
+  { "id": "cat-002", "name": "个人", "color": "#7ED321" },
+  { "id": "cat-003", "name": "学习", "color": "#F5A623" },
+  { "id": "cat-004", "name": "健康", "color": "#D0021B" }
+]
