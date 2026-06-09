@@ -1,0 +1,4 @@
+<resources>
+  <string name="app_name">语拍提醒 · AI助理</string>
+  <string name="expo_system_ui_user_interface_style" translatable="false">light</string>
+</resources>

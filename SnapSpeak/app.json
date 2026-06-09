@@ -1,0 +1,73 @@
+{
+  "expo": {
+    "name": "语拍提醒 · AI助理",
+    "slug": "snapspeak",
+    "version": "1.0.0",
+    "scheme": "snapspeak",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#000000"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.snapspeak.app",
+      "infoPlist": {
+        "NSCameraUsageDescription": "需要相机权限来拍照识别任务",
+        "NSMicrophoneUsageDescription": "需要麦克风权限来语音输入任务",
+        "NSSpeechRecognitionUsageDescription": "需要语音识别权限来转换您的语音"
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundColor": "#000000"
+      },
+      "package": "com.snapspeak.app",
+      "permissions": [
+        "CAMERA",
+        "RECORD_AUDIO",
+        "POST_NOTIFICATIONS",
+        "SCHEDULE_EXACT_ALARM",
+        "READ_EXTERNAL_STORAGE",
+        "READ_MEDIA_IMAGES"
+      ]
+    },
+    "plugins": [
+      "expo-router",
+      "expo-camera",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/android-icon-foreground.png",
+          "color": "#4A90D9"
+        }
+      ],
+      "expo-audio",
+      "expo-sqlite",
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "minSdkVersion": 24
+          }
+        }
+      ],
+      "expo-font",
+      "expo-asset",
+      "expo-speech-recognition",
+      "expo-secure-store",
+      "expo-sharing"
+    ],
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "c1da7284-e3e6-46e8-88bb-fcb26421fd40"
+      }
+    },
+    "owner": "laohu"
+  }
+}
