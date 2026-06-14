@@ -5,6 +5,7 @@ export type AIProvider = 'deepseek' | 'openai' | 'custom' | 'agnes';
 
 const API_KEY_KEY = '@snapspeak_ai_key';
 const MODEL_KEY = '@snapspeak_ai_model';
+const VISION_MODEL_KEY = '@snapspeak_vision_model';
 const PROVIDER_KEY = '@snapspeak_ai_provider';
 const CUSTOM_BASE_URL_KEY = '@snapspeak_ai_custom_url';
 const MIGRATED_FLAG_KEY = '@snapspeak_key_migrated';
@@ -23,13 +24,11 @@ export async function getApiKey(): Promise<string | null> {
   try {
     const secure = await SecureStore.getItemAsync(API_KEY_KEY).catch(() => null);
     if (secure) return secure;
-
     const migrated = await AsyncStorage.getItem(MIGRATED_FLAG_KEY);
     if (migrated) return null;
-
     const legacy = await AsyncStorage.getItem(API_KEY_KEY);
     if (legacy) {
-      await SecureStore.setItemAsync(API_KEY_KEY, legacy);
+      try { await SecureStore.setItemAsync(API_KEY_KEY, legacy); } catch {}
       await AsyncStorage.setItem(MIGRATED_FLAG_KEY, 'true');
       await AsyncStorage.removeItem(API_KEY_KEY);
     }
@@ -40,7 +39,11 @@ export async function getApiKey(): Promise<string | null> {
 }
 
 export async function setApiKey(key: string): Promise<void> {
-  await SecureStore.setItemAsync(API_KEY_KEY, key);
+  try {
+    await SecureStore.setItemAsync(API_KEY_KEY, key);
+  } catch {
+    await AsyncStorage.setItem(API_KEY_KEY, key);
+  }
   await AsyncStorage.removeItem(API_KEY_KEY);
   await AsyncStorage.setItem(MIGRATED_FLAG_KEY, 'true');
 }
@@ -50,6 +53,7 @@ export async function clearApiKey(): Promise<void> {
   await AsyncStorage.removeItem(API_KEY_KEY);
 }
 
+// --- Chat Model ---
 export async function getModel(): Promise<string> {
   try {
     return (await AsyncStorage.getItem(MODEL_KEY)) || 'deepseek-chat';
@@ -62,6 +66,30 @@ export async function setModel(model: string): Promise<void> {
   await AsyncStorage.setItem(MODEL_KEY, model);
 }
 
+// --- Vision Model (OCR / Image Understanding) ---
+export async function getVisionModel(): Promise<string> {
+  try {
+    const v = await AsyncStorage.getItem(VISION_MODEL_KEY);
+    if (v) return v;
+    const p = await getProvider();
+    return DEFAULT_VISION_MODEL[p] || 'gpt-4o';
+  } catch {
+    return 'gpt-4o';
+  }
+}
+
+export async function setVisionModel(model: string): Promise<void> {
+  await AsyncStorage.setItem(VISION_MODEL_KEY, model);
+}
+
+const DEFAULT_VISION_MODEL: Record<string, string> = {
+  deepseek: 'deepseek-chat',
+  openai: 'gpt-4o',
+  agnes: 'gemini-2.5-flash-image',
+  custom: 'gpt-4o',
+};
+
+// --- Provider ---
 export async function getProvider(): Promise<AIProvider> {
   try {
     const val = await AsyncStorage.getItem(PROVIDER_KEY);
@@ -90,6 +118,7 @@ export async function setCustomBaseUrl(url: string): Promise<void> {
   await AsyncStorage.setItem(CUSTOM_BASE_URL_KEY, url);
 }
 
+// --- Persona ---
 export async function getPersona(): Promise<string> {
   try {
     return (await AsyncStorage.getItem(PERSONA_KEY)) || 'assistant';
@@ -102,8 +131,10 @@ export async function setPersona(persona: string): Promise<void> {
   await AsyncStorage.setItem(PERSONA_KEY, persona);
 }
 
-export async function getProviderModels(): Promise<readonly { id: string; label: string }[]> {
-  const provider = await getProvider();
+// --- Model Lists ---
+export interface ModelOption { id: string; label: string; vision?: boolean }
+
+export function getChatModels(provider: AIProvider): ModelOption[] {
   switch (provider) {
     case 'deepseek':
       return [
@@ -114,9 +145,9 @@ export async function getProviderModels(): Promise<readonly { id: string; label:
       ];
     case 'openai':
       return [
-        { id: 'gpt-4o', label: 'GPT-4o' },
-        { id: 'gpt-4o-mini', label: 'GPT-4o Mini' },
-        { id: 'gpt-4-turbo', label: 'GPT-4 Turbo' },
+        { id: 'gpt-4o', label: 'GPT-4o', vision: true },
+        { id: 'gpt-4o-mini', label: 'GPT-4o Mini', vision: true },
+        { id: 'gpt-4-turbo', label: 'GPT-4 Turbo', vision: true },
         { id: 'gpt-3.5-turbo', label: 'GPT-3.5 Turbo' },
       ];
     case 'agnes':
@@ -124,14 +155,16 @@ export async function getProviderModels(): Promise<readonly { id: string; label:
         { id: 'deepseek-chat', label: 'DeepSeek Chat' },
         { id: 'deepseek-v4-flash', label: 'DeepSeek V4 Flash' },
         { id: 'deepseek-v4-pro', label: 'DeepSeek V4 Pro' },
-        { id: 'gpt-4o', label: 'GPT-4o' },
-        { id: 'gpt-4o-mini', label: 'GPT-4o Mini' },
-        { id: 'claude-sonnet-4-6', label: 'Claude Sonnet 4.6' },
-        { id: 'gemini-2.5-flash-image', label: 'Gemini 2.5 Flash (vision)' },
+        { id: 'gpt-4o', label: 'GPT-4o', vision: true },
+        { id: 'gpt-4o-mini', label: 'GPT-4o Mini', vision: true },
+        { id: 'claude-sonnet-4-6', label: 'Claude Sonnet 4.6', vision: true },
+        { id: 'gemini-2.5-flash-image', label: 'Gemini 2.5 Flash', vision: true },
       ];
     case 'custom':
-      return [
-        { id: 'custom-model', label: '自定义模型（输入模型名）' },
-      ];
+      return [{ id: 'custom-model', label: '自定义模型' }];
   }
+}
+
+export function getVisionModels(provider: AIProvider): ModelOption[] {
+  return getChatModels(provider).filter(m => m.vision);
 }

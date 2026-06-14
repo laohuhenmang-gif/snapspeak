@@ -16,8 +16,7 @@ export default function PixelCard({ children, style, noBorder }: Props) {
         styles.card,
         {
           backgroundColor: theme.surface,
-          borderColor: noBorder ? 'transparent' : theme.pixelBorder,
-          shadowColor: theme.pixelShadow,
+          shadowColor: '#000',
         },
         style,
       ]}
@@ -29,12 +28,11 @@ export default function PixelCard({ children, style, noBorder }: Props) {
 
 const styles = StyleSheet.create({
   card: {
-    borderWidth: 2,
-    borderRadius: 0,
-    padding: 12,
-    shadowOffset: { width: 3, height: 3 },
-    shadowOpacity: 0.3,
-    shadowRadius: 0,
-    elevation: 4,
+    borderRadius: 12,
+    padding: 14,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 2,
   },
 });

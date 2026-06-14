@@ -22,13 +22,12 @@ export default function PixelButton({ title, onPress, variant = 'primary', style
     <TouchableOpacity
       onPress={onPress}
       disabled={disabled}
-      activeOpacity={0.8}
+      activeOpacity={0.7}
       style={[
         styles.btn,
         {
           backgroundColor: c.bg,
-          borderColor: theme.pixelBorder,
-          opacity: disabled ? 0.5 : 1,
+          opacity: disabled ? 0.4 : 1,
         },
         style,
       ]}
@@ -40,14 +39,13 @@ export default function PixelButton({ title, onPress, variant = 'primary', style
 
 const styles = StyleSheet.create({
   btn: {
-    borderWidth: 2,
+    borderRadius: 8,
     paddingVertical: 10,
-    paddingHorizontal: 20,
+    paddingHorizontal: 16,
     alignItems: 'center',
   },
   label: {
-    fontFamily: 'monospace',
     fontSize: 14,
-    fontWeight: '700',
+    fontWeight: '600',
   },
 });

@@ -1,4 +1,4 @@
-import { getApiKey, getModel, getBaseUrl } from './ai-config';
+import { getApiKey, getVisionModel, getBaseUrl } from './ai-config';
 import { fetchWithTimeout } from './http-client';
 import { AIError } from './ai-types';
 
@@ -20,7 +20,7 @@ async function visionOCR(imageBase64: string): Promise<OCRResult> {
     return { text: '请先在设置中配置 API Key', confidence: 0 };
   }
 
-  const model = await getModel();
+  const model = await getVisionModel();
   const baseUrl = await getBaseUrl();
   if (!baseUrl) {
     return { text: '请先在设置中配置 API 地址', confidence: 0 };

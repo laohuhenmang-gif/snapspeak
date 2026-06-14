@@ -30,6 +30,6 @@ export default function StatusBanner({ state }: Props) {
 }
 
 const styles = StyleSheet.create({
-  container: { paddingHorizontal: 12, paddingVertical: 6, borderTopWidth: 1 },
-  text: { fontFamily: 'monospace', fontSize: 12 },
+  container: { paddingHorizontal: 12, paddingVertical: 6, borderTopWidth: StyleSheet.hairlineWidth },
+  text: { fontSize: 12 },
 });

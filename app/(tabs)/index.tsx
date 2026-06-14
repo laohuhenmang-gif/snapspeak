@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Alert } from 'react-native';
+import { View, Text, Image, ScrollView, TouchableOpacity, StyleSheet, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useTheme } from '../../services/theme-context';
 import { chat, generateDailyReview, generateWeeklyReview, generateBriefing } from '../../services/ai';
@@ -8,7 +8,7 @@ import { getPersonaById } from '../../constants/personas';
 import {
   loadTasks, addTask, updateTask, deleteTask, toggleComplete,
   saveBlocker, saveMemory, saveAIAction, saveReflection,
-  loadReflectionByDate, saveConversation, saveCapture,
+  loadReflectionByDate, saveConversation, saveCapture, loadRecentConversations,
 } from '../../services/storage';
 import { cancelTaskReminder } from '../../services/notification';
 import { scheduleTaskReminder } from '../../services/notification';
@@ -104,6 +104,22 @@ export default function HomeScreen() {
 
     (async () => {
       await refreshTasks();
+
+      // Load conversation history
+      try {
+        const history = await loadRecentConversations(50);
+        if (history.length > 0) {
+          const restored: ChatMessage[] = history.map((h: any) => ({
+            id: h.id,
+            role: h.role as 'user' | 'assistant',
+            type: (h.message_type || 'text') as 'text' | 'error',
+            content: h.content,
+            timestamp: new Date(h.created_at).getTime(),
+          }));
+          setMessages(restored);
+        }
+      } catch {}
+
       const all = await loadTasks();
       const today = new Date().toISOString().slice(0, 10);
       const todayList = all.filter(t => t.datetime?.startsWith(today));
@@ -569,6 +585,9 @@ export default function HomeScreen() {
                   { borderColor: theme.pixelBorder },
                 ]}
               >
+                {msg.imageUri && (
+                  <Image source={{ uri: msg.imageUri }} style={styles.messageImage} resizeMode="cover" />
+                )}
                 <Text
                   style={[styles.bubbleText, { color: msg.role === 'user' ? '#fff' : theme.text }]}
                   onLongPress={() => setContextMenu({ visible: true, content: msg.content })}
@@ -647,16 +666,17 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   header: {
     flexDirection: 'row', alignItems: 'center',
-    paddingHorizontal: 12, paddingVertical: 8,
-    borderBottomWidth: 2,
+    paddingHorizontal: 12, paddingVertical: 10,
+    borderBottomWidth: StyleSheet.hairlineWidth,
   },
-  heading: { fontFamily: 'monospace', fontSize: 16, fontWeight: '700' },
-  subheading: { fontFamily: 'monospace', fontSize: 11 },
+  heading: { fontSize: 17, fontWeight: '700' },
+  subheading: { fontSize: 12, marginTop: 1 },
   settingsBtn: { padding: 6 },
   chatArea: { flex: 1 },
-  bubble: { borderWidth: 2, padding: 10, marginBottom: 8, maxWidth: '85%' },
-  userBubble: { backgroundColor: '#4a90d9', alignSelf: 'flex-end' },
-  asstBubble: { backgroundColor: '#fff', alignSelf: 'flex-start' },
-  bubbleText: { fontFamily: 'monospace', fontSize: 13, lineHeight: 18 },
+  bubble: { padding: 10, marginBottom: 8, maxWidth: '82%' },
+  userBubble: { backgroundColor: '#4a90d9', alignSelf: 'flex-end', borderRadius: 16, borderBottomRightRadius: 4 },
+  asstBubble: { backgroundColor: '#f0f0f0', alignSelf: 'flex-start', borderRadius: 16, borderBottomLeftRadius: 4 },
+  bubbleText: { fontSize: 14, lineHeight: 20 },
+  messageImage: { width: 200, height: 150, borderRadius: 12, marginBottom: 6 },
   reviewActions: { flexDirection: 'row', gap: 6, marginBottom: 8, paddingHorizontal: 4 },
 });

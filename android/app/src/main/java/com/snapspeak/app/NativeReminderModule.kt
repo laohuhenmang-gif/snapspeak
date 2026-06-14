@@ -1,5 +1,6 @@
 package com.snapspeak.app
 
+import android.content.Context
 import android.app.Activity
 import com.facebook.react.bridge.*
 import com.facebook.react.modules.core.DeviceEventManagerModule
@@ -11,7 +12,7 @@ class NativeReminderModule(reactContext: ReactApplicationContext) : ReactContext
     @ReactMethod
     fun scheduleAlarm(taskId: String, triggerAtMillis: Double, title: String, body: String, promise: Promise) {
         try {
-            val context = reactApplicationContext
+            val context: Context = reactApplicationContext
             AlarmHelper.scheduleAlarm(context, taskId, triggerAtMillis.toLong(), title, body)
 
             val prefs = context.getSharedPreferences("snapspeak_alarms", Context.MODE_PRIVATE)
@@ -30,7 +31,7 @@ class NativeReminderModule(reactContext: ReactApplicationContext) : ReactContext
     @ReactMethod
     fun cancelAlarm(taskId: String, promise: Promise) {
         try {
-            val context = reactApplicationContext
+            val context: Context = reactApplicationContext
             AlarmHelper.cancelAlarm(context, taskId)
 
             val prefs = context.getSharedPreferences("snapspeak_alarms", Context.MODE_PRIVATE)

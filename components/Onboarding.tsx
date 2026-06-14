@@ -86,11 +86,15 @@ export default function Onboarding({ onFinish }: Props) {
   ];
 
   const handleNext = async () => {
-    if (page === 1 && apiKey.trim()) {
-      await setApiKey(apiKey.trim());
+    try {
+      if (page === 1 && apiKey.trim()) {
+        await setApiKey(apiKey.trim());
+      }
+    } catch {
+      // API Key 保存失败不阻止流程
     }
     if (page === 2) {
-      await setPersona(selectedPersona);
+      try { await setPersona(selectedPersona); } catch {}
       await completeOnboarding();
       onFinish();
       return;
