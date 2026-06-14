@@ -1,27 +1,32 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
-import { useTheme } from '../services/theme-context';
-import { chat, generateDailyReview, generateBriefing } from '../services/ai';
+import { useTheme } from '../../services/theme-context';
+import { chat, generateDailyReview, generateWeeklyReview, generateBriefing } from '../../services/ai';
+import { getPersona } from '../../services/ai-config';
+import { getPersonaById } from '../../constants/personas';
 import {
   loadTasks, addTask, updateTask, deleteTask, toggleComplete,
   saveBlocker, saveMemory, saveAIAction, saveReflection,
-  loadReflectionByDate,
-} from '../services/storage';
-import { cancelTaskReminder } from '../services/notification';
-import { scheduleTaskReminder } from '../services/notification';
-import { ensureSpeechPermission, startListening, stopListening } from '../services/speech';
-import { recognizeText } from '../services/ocr';
-import { ocrEnhance } from '../services/ai';
+  loadReflectionByDate, saveConversation, saveCapture,
+} from '../../services/storage';
+import { cancelTaskReminder } from '../../services/notification';
+import { scheduleTaskReminder } from '../../services/notification';
+import { ensureSpeechPermission, startListening, stopListening } from '../../services/speech';
+import { recognizeText } from '../../services/ocr';
+import { ocrEnhance } from '../../services/ai';
 import * as ImagePicker from 'expo-image-picker';
-import BottomInputBar from '../components/BottomInputBar';
-import StatusBanner, { type ChatState } from '../components/StatusBanner';
-import TaskSummaryCard from '../components/TaskSummaryCard';
-import ErrorBanner from '../components/ErrorBanner';
-import ConfirmCard from '../components/ConfirmCard';
-import PixelAvatar from '../components/PixelAvatar';
-import type { Task, Category, RecurringRule } from '../types';
-import type { AIAction, AIChatMessage } from '../services/ai-types';
+import { startNetworkMonitor, stopNetworkMonitor } from '../../services/network';
+import BottomInputBar from '../../components/BottomInputBar';
+import StatusBanner, { type ChatState } from '../../components/StatusBanner';
+import TaskSummaryCard from '../../components/TaskSummaryCard';
+import ErrorBanner from '../../components/ErrorBanner';
+import ConfirmCard from '../../components/ConfirmCard';
+import PixelAvatar from '../../components/PixelAvatar';
+import PixelButton from '../../components/PixelButton';
+import AnimatedMessage from '../../components/AnimatedMessage';
+import type { Task, Category, RecurringRule } from '../../types';
+import type { AIAction, AIChatMessage } from '../../services/ai-types';
 
 interface ChatMessage {
   id: string;
@@ -31,6 +36,7 @@ interface ChatMessage {
   actions?: AIAction[];
   imageUri?: string;
   timestamp: number;
+  reviewData?: { type: 'daily' | 'weekly'; date: string; summary: string; suggestion: string; rate: number };
 }
 
 type StatusState = ChatState;
@@ -46,6 +52,7 @@ export default function HomeScreen() {
   const [allTasks, setAllTasks] = useState<Task[]>([]);
   const [pendingActions, setPendingActions] = useState<AIAction[]>([]);
   const [listening, setListening] = useState(false);
+  const [isConnected, setIsConnected] = useState(true);
   const scrollRef = useRef<ScrollView>(null);
   const listeningCleanup = useRef<(() => void) | null>(null);
   const lastSendText = useRef<string>('');
@@ -59,6 +66,11 @@ export default function HomeScreen() {
     if (messages.length > 0) scrollToBottom();
   }, [messages, scrollToBottom]);
 
+  useEffect(() => {
+    startNetworkMonitor(setIsConnected);
+    return () => { stopNetworkMonitor(); };
+  }, []);
+
   const refreshTasks = useCallback(async () => {
     const all = await loadTasks();
     setAllTasks(all);
@@ -68,6 +80,11 @@ export default function HomeScreen() {
 
   const addMessage = useCallback((msg: ChatMessage) => {
     setMessages(prev => [...prev, msg]);
+    saveConversation({
+      role: msg.role,
+      content: msg.content,
+      message_type: msg.type,
+    }).catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -92,6 +109,7 @@ export default function HomeScreen() {
               role: 'assistant', type: 'text',
               content: `📊 昨日复盘\n完成 ${review.completion_rate}%\n${review.ai_summary}\n\n建议：${review.ai_suggestion}`,
               timestamp: Date.now(),
+              reviewData: { type: 'daily', date: yesterday, summary: review.ai_summary, suggestion: review.ai_suggestion, rate: review.completion_rate },
             });
             await saveReflection({
               date: yesterday,
@@ -106,13 +124,44 @@ export default function HomeScreen() {
         } catch {}
       }
 
+      // Weekly review on Mondays
+      const todayDate = new Date();
+      if (todayDate.getDay() === 1) {
+        const lastMonday = new Date(todayDate.getTime() - 7 * 86400000);
+        const weekStart = lastMonday.toISOString().slice(0, 10);
+        const existingWeekly = await loadReflectionByDate('weekly-' + weekStart);
+        if (!existingWeekly) {
+          try {
+            const weekReview = await generateWeeklyReview(all, weekStart);
+            addMessage({
+              id: 'weekly-review-' + weekStart,
+              role: 'assistant', type: 'text',
+              content: `📊 上周复盘 (${weekStart} ~ ${new Date(lastMonday.getTime() + 6 * 86400000).toISOString().slice(0, 10)})\n完成 ${weekReview.total_completed}/${weekReview.total_planned} 件，完成率 ${weekReview.completion_rate}%\n${weekReview.ai_summary}\n\n建议：${weekReview.ai_suggestion}`,
+              timestamp: Date.now(),
+              reviewData: { type: 'weekly', date: weekStart, summary: weekReview.ai_summary, suggestion: weekReview.ai_suggestion, rate: weekReview.completion_rate },
+            });
+            await saveReflection({
+              date: 'weekly-' + weekStart,
+              planned_count: weekReview.total_planned,
+              completed_count: weekReview.total_completed,
+              completion_rate: weekReview.completion_rate,
+              overdue_count: 0,
+              ai_summary: weekReview.ai_summary,
+              ai_suggestion: weekReview.ai_suggestion,
+            });
+          } catch {}
+        }
+      }
+
       // Generate greeting
+      const personaId = await getPersona();
+      const persona = getPersonaById(personaId);
       const greeting = await generateBriefing(todayList);
       addMessage({
         id: 'greeting',
         role: 'assistant',
         type: 'text',
-        content: greeting,
+        content: `${persona.avatar} ${greeting}`,
         timestamp: Date.now(),
       });
     })();
@@ -217,6 +266,14 @@ export default function HomeScreen() {
   const handleSend = useCallback(async (text?: string) => {
     const msg = (text || input).trim();
     if (!msg || chatState === 'thinking' || chatState === 'executing') return;
+    if (!isConnected) {
+      addMessage({
+        id: Date.now().toString(36), role: 'assistant', type: 'error',
+        content: '当前网络不可用，请检查网络后重试。',
+        timestamp: Date.now(),
+      });
+      return;
+    }
     lastSendText.current = msg;
 
     setInput('');
@@ -227,6 +284,7 @@ export default function HomeScreen() {
       role: 'user', type: 'text', content: msg, timestamp: Date.now(),
     };
     addMessage(userMsg);
+    saveCapture({ type: 'text', raw_text: msg }).catch(() => {});
 
     try {
       const history: AIChatMessage[] = messages
@@ -265,7 +323,7 @@ export default function HomeScreen() {
       addMessage(errMsg);
       setChatState('error');
     }
-  }, [input, chatState, messages, todayTasks, allTasks, addMessage]);
+  }, [input, chatState, messages, todayTasks, allTasks, addMessage, isConnected]);
 
   const handleConfirm = useCallback(async () => {
     if (pendingActions.length === 0) return;
@@ -316,6 +374,7 @@ export default function HomeScreen() {
         setListening(false);
         setChatState('sending');
         setInput('');
+        saveCapture({ type: 'voice', transcribed_text: result }).catch(() => {});
         await handleSend(result);
       },
       (error) => {
@@ -405,6 +464,8 @@ export default function HomeScreen() {
         return;
       }
 
+      saveCapture({ type: 'photo', image_uri: asset.uri, ocr_text: ocrResult.text }).catch(() => {});
+
       // AI task extraction
       const enhanced = await ocrEnhance(ocrResult.text);
 
@@ -464,9 +525,6 @@ export default function HomeScreen() {
              `今日 ${todayTasks.filter(t => !t.completed).length} 项待办`}
           </Text>
         </View>
-        <TouchableOpacity onPress={() => router.push('/settings')} style={styles.settingsBtn}>
-          <Text style={{ color: theme.primary, fontFamily: 'monospace', fontWeight: '700' }}>[设置]</Text>
-        </TouchableOpacity>
       </View>
 
       {/* Chat area */}
@@ -478,8 +536,9 @@ export default function HomeScreen() {
       >
         <TaskSummaryCard tasks={todayTasks} onTaskPress={handleTaskPress} />
 
-        {messages.map(msg => (
-          <View key={msg.id}>
+        {messages.map((msg, idx) => (
+          <AnimatedMessage key={msg.id} delay={idx < 10 ? idx * 40 : 0}>
+            <View>
             {msg.type === 'error' ? (
               <ErrorBanner
                 message={msg.content}
@@ -500,6 +559,30 @@ export default function HomeScreen() {
               </View>
             )}
 
+            {/* Review action buttons */}
+            {msg.reviewData && (
+              <View style={styles.reviewActions}>
+                <PixelButton
+                  title="[生成明日计划]"
+                  onPress={() => handleSend('帮我根据刚才的复盘生成明天的计划')}
+                  variant="secondary"
+                  style={{ flex: 1 }}
+                />
+                <PixelButton
+                  title="[查看详情]"
+                  onPress={() => handleSend('帮我查看今天所有任务的完成情况')}
+                  variant="secondary"
+                  style={{ flex: 1 }}
+                />
+                <PixelButton
+                  title="[不用提醒]"
+                  onPress={() => addMessage({ id: Date.now().toString(36), role: 'assistant', type: 'text', content: '好的，已跳过本次复盘提醒。', timestamp: Date.now() })}
+                  variant="secondary"
+                  style={{ flex: 1 }}
+                />
+              </View>
+            )}
+
             {/* Confirmation card for pending actions */}
             {msg.actions && msg.actions.length > 0 && pendingActions === msg.actions && (
               <ConfirmCard
@@ -510,6 +593,7 @@ export default function HomeScreen() {
               />
             )}
           </View>
+          </AnimatedMessage>
         ))}
       </ScrollView>
 
@@ -545,4 +629,5 @@ const styles = StyleSheet.create({
   userBubble: { backgroundColor: '#4a90d9', alignSelf: 'flex-end' },
   asstBubble: { backgroundColor: '#fff', alignSelf: 'flex-start' },
   bubbleText: { fontFamily: 'monospace', fontSize: 13, lineHeight: 18 },
+  reviewActions: { flexDirection: 'row', gap: 6, marginBottom: 8, paddingHorizontal: 4 },
 });
