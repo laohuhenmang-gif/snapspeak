@@ -1,0 +1,51 @@
+{
+  "expo": {
+    "name": "SnapSpeak",
+    "slug": "snapspeak",
+    "version": "2.1.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "scheme": "snapspeak",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "extra": {
+      "router": {
+        "origin": false
+      }
+    },
+    "splash": {
+      "backgroundColor": "#f5f0e8"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.snapspeak.app"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundColor": "#f5f0e8"
+      },
+      "package": "com.snapspeak.app"
+    },
+    "plugins": [
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/android-icon-foreground.png",
+          "color": "#4a90d9"
+        }
+      ],
+      "expo-speech-recognition",
+      "expo-secure-store",
+      "expo-sqlite",
+      "expo-document-picker",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "SnapSpeak 需要使用相册来选择图片进行 OCR 识别",
+          "cameraPermission": "SnapSpeak 需要使用相机来拍照进行 OCR 识别"
+        }
+      ]
+    ]
+  }
+}
